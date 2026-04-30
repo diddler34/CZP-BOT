@@ -97,7 +97,7 @@ SHOP_CATEGORIES = {
         14: {"name": "Chapa de Metal 10", "czp": 1800},
         30: {"name": "Cimento (2und.)", "czp": 400},
         31: {"name": "Mortar Mix (2und.)", "czp": 400},
-        33: {"name": "Bitoneira", "czp": 2500},
+        33: {"name": "Bitoneira", "czp": 2500}
     },
 
     "📦 Armazenamento": {
@@ -126,7 +126,8 @@ SHOP_CATEGORIES = {
         10: {"name": "Kit Inicial", "czp": 500},
         11: {"name": "Mochila MMG 120", "czp": 900},
         29: {"name": "Kit NBC Completo", "czp": 400},
-        19: {"name": "Massa Epóxi", "czp": 250}
+        19: {"name": "Massa Epóxi", "czp": 250},
+        34: {"name": "Nightvision", "czp": 600}
     },
 
     "🪖 MMG Gear": {
@@ -134,7 +135,7 @@ SHOP_CATEGORIES = {
     },
 
     "⚡ VIP & Serviços": {
-        33: {"name": "Status VIP 30 dias", "czp": 5500},
+        32: {"name": "Status VIP 30 dias", "czp": 5500},
         18: {"name": "Prioridade na Fila - 30 Dias", "czp": 1200}
     }
 }
