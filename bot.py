@@ -437,15 +437,52 @@ class PurchaseModal(ui.Modal, title="Finalizar Compra"):
 # =========================
 # SELECT MENU
 # =========================
-class ItemSelect(ui.Select):
+class CategorySelect(ui.Select):
     def __init__(self):
+        options = [
+            discord.SelectOption(
+                label=category_name,
+                description="Ver itens desta categoria",
+                value=category_name
+            )
+            for category_name in SHOP_CATEGORIES.keys()
+        ]
+
+        super().__init__(
+            placeholder="Selecione uma categoria primeiro",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_category = self.values[0]
+
+        await interaction.response.send_message(
+            f"Categoria selecionada: **{selected_category}**\nAgora selecione o item que você quer comprar:",
+            view=ItemSelectView(selected_category),
+            ephemeral=True
+        )
+
+
+class CategorySelectView(ui.View):
+    def __init__(self):
+        super().__init__(timeout=120)
+        self.add_item(CategorySelect())
+
+
+class ItemSelect(ui.Select):
+    def __init__(self, category_name: str):
+        self.category_name = category_name
+        items = SHOP_CATEGORIES[category_name]
+
         options = [
             discord.SelectOption(
                 label=f"{item_id} - {item['name']}",
                 description=f"Custo: {item['czp']} CZP",
                 value=str(item_id)
             )
-            for item_id, item in SHOP_ITEMS.items()
+            for item_id, item in items.items()
         ]
 
         super().__init__(
@@ -460,10 +497,16 @@ class ItemSelect(ui.Select):
         await interaction.response.send_modal(PurchaseModal(selected_item_id))
 
 
+class ItemSelectView(ui.View):
+    def __init__(self, category_name: str):
+        super().__init__(timeout=120)
+        self.add_item(ItemSelect(category_name))
+
+
 class BuySelectView(ui.View):
     def __init__(self):
         super().__init__(timeout=120)
-        self.add_item(ItemSelect())
+        self.add_item(CategorySelect())
 
 
 # =========================
@@ -828,7 +871,7 @@ class MainShopView(ui.View):
     @ui.button(label="🛒 Comprar", style=discord.ButtonStyle.success, custom_id="czp_buy_button")
     async def buy_button(self, interaction: discord.Interaction, button: ui.Button):
         await interaction.response.send_message(
-            "Selecione abaixo o item que você quer comprar:",
+            "Selecione primeiro a categoria do item:",
             view=BuySelectView(),
             ephemeral=True
         )
@@ -882,6 +925,11 @@ async def on_ready():
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setup_shop(ctx):
+    async for message in ctx.channel.history(limit=50):
+        if message.author == bot.user and message.embeds:
+            if message.embeds[0].title == "🏪 MERCADO CZP":
+                await message.delete()
+
     embed = build_shop_embed()
     await ctx.send(embed=embed, view=MainShopView())
 
@@ -1080,3 +1128,4 @@ async def leaderboard(ctx):
 
 
 bot.run(TOKEN)
+
