@@ -93,11 +93,11 @@ SHOP_CATEGORIES = {
         16: {"name": "Serrote", "czp": 150},
         15: {"name": "CodeLock", "czp": 450},
         12: {"name": "Bandeira", "czp": 300},
-        13: {"name": "Kit de Território", "czp": 800},
+        13: {"name": "Kit Bandeira", "czp": 800},
         14: {"name": "Chapa de Metal 10", "czp": 1800},
-        19: {"name": "Massa Epóxi", "czp": 250},
         30: {"name": "Cimento (2und.)", "czp": 400},
-        31: {"name": "Mortar Mix (2und.)", "czp": 400}
+        31: {"name": "Mortar Mix (2und.)", "czp": 400},
+        33: {"name": "Bitoneira", "czp": 2500},
     },
 
     "📦 Armazenamento": {
@@ -117,7 +117,7 @@ SHOP_CATEGORIES = {
         25: {"name": "Vela de Ignição", "czp": 350},
         26: {"name": "Galão de Gasolina", "czp": 450},
         27: {"name": "Pneu de Carro", "czp": 400},
-        28: {"name": "Roda BMW", "czp": 400}
+        28: {"name": "Roda BMW", "czp": 650}
     },
 
     "🎒 Equipamentos": {
@@ -125,7 +125,8 @@ SHOP_CATEGORIES = {
         3: {"name": "Pedra de Amolar", "czp": 250},
         10: {"name": "Kit Inicial", "czp": 500},
         11: {"name": "Mochila MMG 120", "czp": 900},
-        29: {"name": "Kit NBC Completo", "czp": 400}
+        29: {"name": "Kit NBC Completo", "czp": 400},
+        19: {"name": "Massa Epóxi", "czp": 250}
     },
 
     "🪖 MMG Gear": {
@@ -133,6 +134,7 @@ SHOP_CATEGORIES = {
     },
 
     "⚡ VIP & Serviços": {
+        33: {"name": "Status VIP 30 dias", "czp": 5500},
         18: {"name": "Prioridade na Fila - 30 Dias", "czp": 1200}
     }
 }
