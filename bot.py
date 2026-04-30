@@ -32,6 +32,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # =========================
 DATA_FILE = os.path.join(script_dir, "coins.json")
 STARTER_FILE = os.path.join(script_dir, "starter_claims.json")
+ORDERS_FILE = os.path.join(script_dir, "orders.json")
 
 PIX_CODE = """00020126580014br.gov.bcb.pix013696f850dd-18da-4a87-a008-51e6a9f1e1c95204000053039865802BR5919YGOR ATTILA DE LIMA6009Sao Paulo62290525REC69D91E76AB4C03429651466304A923"""
 PIX_QR_FILE = os.path.join(script_dir, "pix_qr.png")
@@ -67,41 +68,72 @@ def save_starter_claims(data):
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 
+def load_orders():
+    try:
+        with open(ORDERS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError:
+        return {}
+
+
+def save_orders(data):
+    with open(ORDERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+
 # =========================
 # ITENS DA LOJA
 # =========================
 SHOP_CATEGORIES = {
     "🧱 Construção": {
-        1: {"name": "Caixa de Pregos (R$ 3,00 - 300 CZP)", "czp": 300},
-        9: {"name": "Pacote de Tábuas 30 (R$ 4,00 - 400 CZP)", "czp": 400},
-        16: {"name": "Serrote (R$ 1,50 - 150 CZP)", "czp": 150},
-        15: {"name": "CodeLock (R$ 12,00 - 1200 CZP)", "czp": 1200},
-        12: {"name": "Bandeira (R$ 3,00 - 300 CZP)", "czp": 300},
-        13: {"name": "Kit de Território (R$ 25,00 - 2500 CZP)", "czp": 2500},
-        14: {"name": "Chapa de metal 10 (R$ 18,00 - 1800 CZP)", "czp": 1800}
+        1: {"name": "Caixa de Pregos", "czp": 300},
+        9: {"name": "Pacote de Tábuas (30)", "czp": 400},
+        16: {"name": "Serrote", "czp": 150},
+        15: {"name": "CodeLock", "czp": 450},
+        12: {"name": "Bandeira", "czp": 300},
+        13: {"name": "Kit de Território", "czp": 800},
+        14: {"name": "Chapa de Metal 10", "czp": 1800},
+        19: {"name": "Massa Epóxi", "czp": 250},
+        30: {"name": "Cimento (2und.)", "czp": 400},
+        31: {"name": "Mortar Mix (2und.)", "czp": 400}
+    },
+
+    "📦 Armazenamento": {
+        20: {"name": "Container Pequeno", "czp": 300},
+        21: {"name": "Container Médio", "czp": 500},
+        22: {"name": "Armário Militar Grande", "czp": 850}
     },
 
     "🚗 Veículos": {
-        4: {"name": "Chave de Carro (R$ 10,00 - 1000 CZP)", "czp": 1000},
-        5: {"name": "Lock Pick de Carro (R$ 30,00 - 3000 CZP)", "czp": 3000},
-        6: {"name": "BMW M5 (R$ 50,00 - 5000 CZP)", "czp": 5000},
-        7: {"name": "Ford F350 (R$ 28,00 - 2800 CZP)", "czp": 2800},
-        8: {"name": "Roda Ford F350 (R$ 4,00 - 400 CZP)", "czp": 400},
+        4: {"name": "Chave de Carro", "czp": 1000},
+        5: {"name": "Lock Pick de Carro", "czp": 3000},
+        6: {"name": "BMW M5", "czp": 5000},
+        7: {"name": "Ford F350", "czp": 2800},
+        8: {"name": "Roda Ford F350", "czp": 400},
+        23: {"name": "Bateria de Carro", "czp": 500},
+        24: {"name": "Radiador", "czp": 600},
+        25: {"name": "Vela de Ignição", "czp": 350},
+        26: {"name": "Galão de Gasolina", "czp": 450},
+        27: {"name": "Pneu de Carro", "czp": 400},
+        28: {"name": "Roda BMW", "czp": 400}
     },
 
     "🎒 Equipamentos": {
-        2: {"name": "Machadinha (R$ 2,00 - 200 CZP)", "czp": 200},
-        3: {"name": "Pedra de Amolar (R$ 2,50 - 250 CZP)", "czp": 250},
-        10: {"name": "Kit Básico (R$ 5,00 - 500 CZP)", "czp": 500},
-        11: {"name": "Mochila MMG 120 (R$ 15,00 - 1500 CZP)", "czp": 1500},
+        2: {"name": "Machadinha", "czp": 200},
+        3: {"name": "Pedra de Amolar", "czp": 250},
+        10: {"name": "Kit Inicial", "czp": 500},
+        11: {"name": "Mochila MMG 120", "czp": 900},
+        29: {"name": "Kit NBC Completo", "czp": 400}
     },
 
     "🪖 MMG Gear": {
-        17: {"name": "Set Militar MMG Alpine (R$ 15,00 - 1500 CZP)", "czp": 1500},
+        17: {"name": "Set Militar MMG Alpine", "czp": 1500}
     },
 
     "⚡ VIP & Serviços": {
-        18: {"name": "Prioridade na Fila - 30 Dias (R$ 12,00 - 1200 CZP)", "czp": 1200},
+        18: {"name": "Prioridade na Fila - 30 Dias", "czp": 1200}
     }
 }
 
@@ -220,8 +252,7 @@ def build_shop_embed():
     for category_name, items in SHOP_CATEGORIES.items():
         value = ""
         for item_id, item in items.items():
-            # CORREÇÃO: Usando 'czp' em vez de 'price'
-            value += f"ID {item_id} • {item['name']}\n"
+            value += f"ID {item_id} • {item['name']} • {item['czp']} CZP\n"
 
         embed.add_field(
             name=category_name,
@@ -328,7 +359,6 @@ class PurchaseModal(ui.Modal, title="Finalizar Compra"):
             await interaction.followup.send("❌ Item inválido.", ephemeral=True)
             return
 
-        # CORREÇÃO: Usando 'czp' em vez de 'price'
         total_price = item["czp"] * quantity
         current_balance = get_balance(interaction.user.id)
 
@@ -409,7 +439,6 @@ class ItemSelect(ui.Select):
         options = [
             discord.SelectOption(
                 label=f"{item_id} - {item['name']}",
-                # CORREÇÃO: Usando 'czp' em vez de 'price'
                 description=f"Custo: {item['czp']} CZP",
                 value=str(item_id)
             )
@@ -437,6 +466,104 @@ class BuySelectView(ui.View):
 # =========================
 # SELECT MENU - ADQUIRIR CZP
 # =========================
+class AdminCZPOrderView(ui.View):
+    def __init__(self, order_id: str):
+        super().__init__(timeout=None)
+        self.order_id = order_id
+
+    @ui.button(label="✅ Confirmar Pagamento", style=discord.ButtonStyle.success)
+    async def confirm_payment(self, interaction: discord.Interaction, button: ui.Button):
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("❌ Apenas administradores podem usar este botão.", ephemeral=True)
+            return
+
+        orders = load_orders()
+        order = orders.get(self.order_id)
+
+        if not order:
+            await interaction.response.send_message("❌ Pedido não encontrado.", ephemeral=True)
+            return
+
+        if order["status"] != "Aguardando pagamento":
+            await interaction.response.send_message(f"⚠️ Este pedido já está marcado como: **{order['status']}**", ephemeral=True)
+            return
+
+        user_id = int(order["user_id"])
+        amount = int(order["czp"])
+
+        add_balance(user_id, amount)
+        new_balance = get_balance(user_id)
+
+        order["status"] = "Pagamento confirmado"
+        order["confirmed_by"] = str(interaction.user)
+        order["confirmed_at"] = datetime.now().isoformat()
+        orders[self.order_id] = order
+        save_orders(orders)
+
+        try:
+            user = await bot.fetch_user(user_id)
+
+            receipt_embed = discord.Embed(
+                title="✅ Pagamento Confirmado",
+                description="Seu pagamento foi confirmado e o CZP foi adicionado.",
+                color=0x2ECC71,
+                timestamp=datetime.now()
+            )
+            receipt_embed.add_field(name="Pedido", value=self.order_id, inline=False)
+            receipt_embed.add_field(name="CZP adicionado", value=f"{amount} CZP", inline=False)
+            receipt_embed.add_field(name="Saldo atual", value=f"{new_balance} CZP", inline=False)
+            receipt_embed.set_footer(text="Carnage Z CZP")
+
+            await send_dm_safe(user, receipt_embed)
+        except discord.HTTPException:
+            pass
+
+        for child in self.children:
+            child.disabled = True
+
+        await interaction.message.edit(view=self)
+
+        await interaction.response.send_message(
+            f"✅ Pagamento confirmado.\n"
+            f"Foram adicionados **{amount} CZP** ao usuário <@{user_id}>.\n"
+            f"Novo saldo: **{new_balance} CZP**",
+            ephemeral=True
+        )
+
+    @ui.button(label="❌ Cancelar Pedido", style=discord.ButtonStyle.danger)
+    async def cancel_payment(self, interaction: discord.Interaction, button: ui.Button):
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("❌ Apenas administradores podem usar este botão.", ephemeral=True)
+            return
+
+        orders = load_orders()
+        order = orders.get(self.order_id)
+
+        if not order:
+            await interaction.response.send_message("❌ Pedido não encontrado.", ephemeral=True)
+            return
+
+        if order["status"] != "Aguardando pagamento":
+            await interaction.response.send_message(f"⚠️ Este pedido já está marcado como: **{order['status']}**", ephemeral=True)
+            return
+
+        order["status"] = "Pedido cancelado"
+        order["cancelled_by"] = str(interaction.user)
+        order["cancelled_at"] = datetime.now().isoformat()
+        orders[self.order_id] = order
+        save_orders(orders)
+
+        for child in self.children:
+            child.disabled = True
+
+        await interaction.message.edit(view=self)
+
+        await interaction.response.send_message(
+            f"❌ Pedido `{self.order_id}` cancelado.",
+            ephemeral=True
+        )
+
+
 class CZPPackageSelect(ui.Select):
     def __init__(self):
         options = [
@@ -566,6 +693,20 @@ class CZPPackageSelect(ui.Select):
         # PACOTES PAGOS → ENVIA PIX E REGISTRA PEDIDO PARA O ADMIN
         order_id = generate_order_id()
 
+        orders = load_orders()
+        orders[order_id] = {
+            "order_id": order_id,
+            "user_id": str(interaction.user.id),
+            "user_name": str(interaction.user),
+            "package": package["name"],
+            "price_brl": package["price_brl"],
+            "czp": package["czp"],
+            "bonus": package["bonus"],
+            "status": "Aguardando pagamento",
+            "created_at": datetime.now().isoformat()
+        }
+        save_orders(orders)
+
         payment_embed = discord.Embed(
             title="💳 Pagamento via PIX - CZP",
             description=(
@@ -645,7 +786,10 @@ class CZPPackageSelect(ui.Select):
 
         admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
         if admin_channel:
-            await admin_channel.send(embed=admin_embed)
+            await admin_channel.send(
+                embed=admin_embed,
+                view=AdminCZPOrderView(order_id)
+            )
 
         user_msg = (
             f"✅ Seu pedido foi criado com sucesso.\n"
