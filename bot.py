@@ -84,63 +84,65 @@ def save_orders(data):
 
 
 # =========================
-# ITENS DA LOJA
+# ITENS DA LOJA (ORGANIZED & EXPANDED)
 # =========================
 SHOP_CATEGORIES = {
-    "🧱 Construção": {
+    "🧱 Construção & Kits de Base": {
         1: {"name": "Caixa de Pregos", "czp": 300},
-        9: {"name": "Pacote de Tábuas (30)", "czp": 400},
-        16: {"name": "Serrote", "czp": 150},
-        15: {"name": "CodeLock", "czp": 450},
-        12: {"name": "Bandeira", "czp": 300},
-        13: {"name": "Kit Bandeira", "czp": 800},
-        14: {"name": "Chapa de Metal 10", "czp": 1800},
-        30: {"name": "Cimento (2und.)", "czp": 400},
-        31: {"name": "Mortar Mix (2und.)", "czp": 400},
-        33: {"name": "Bitoneira", "czp": 2500}
+        2: {"name": "Pacote de Tábuas (30)", "czp": 400},
+        3: {"name": "Serrote", "czp": 150},
+        4: {"name": "CodeLock", "czp": 450},
+        5: {"name": "Bandeira", "czp": 300},
+        6: {"name": "Kit Bandeira", "czp": 800},
+        7: {"name": "Chapa de Metal (10)", "czp": 1800},
+        8: {"name": "Cimento (2und.)", "czp": 400},
+        9: {"name": "Mortar Mix (2und.)", "czp": 400},
+        10: {"name": "Betoneira", "czp": 2500},
+        11: {"name": "Kit Base Básico", "czp": 500},
+        12: {"name": "Kit Base Completo", "czp": 2500}
     },
 
     "📦 Armazenamento": {
-        20: {"name": "Container Pequeno", "czp": 300},
-        21: {"name": "Container Médio", "czp": 500},
-        22: {"name": "Armário Militar Grande", "czp": 850}
+        13: {"name": "Container Pequeno", "czp": 300},
+        14: {"name": "Container Médio", "czp": 500},
+        15: {"name": "Armário Militar Grande", "czp": 850}
     },
 
-    "🚗 Veículos": {
-        4: {"name": "Chave de Carro", "czp": 1000},
-        5: {"name": "Lock Pick de Carro", "czp": 3000},
-        6: {"name": "BMW M5", "czp": 5000},
-        7: {"name": "Ford F350", "czp": 2800},
-        8: {"name": "Roda Ford F350", "czp": 400},
-        23: {"name": "Bateria de Carro", "czp": 500},
-        24: {"name": "Radiador", "czp": 600},
-        25: {"name": "Vela de Ignição", "czp": 350},
-        26: {"name": "Galão de Gasolina", "czp": 450},
-        27: {"name": "Pneu de Carro", "czp": 400},
-        28: {"name": "Roda BMW", "czp": 650}
+    "🏎️ Veículos Mod": {
+        16: {"name": "Mod Car 4x4", "czp": 3000},
+        17: {"name": "Mod Car Sedan", "czp": 3000}
     },
 
-    "🎒 Equipamentos": {
-        2: {"name": "Machadinha", "czp": 200},
-        3: {"name": "Pedra de Amolar", "czp": 250},
-        10: {"name": "Kit Inicial", "czp": 500},
-        11: {"name": "Mochila MMG 120", "czp": 900},
+    "🔧 Peças & Utilitários de Carro": {
+        18: {"name": "Chave de Carro", "czp": 1000},
+        19: {"name": "Lock Pick de Carro", "czp": 3000},
+        20: {"name": "Bateria de Carro Mod", "czp": 400},
+        21: {"name": "Radiador de Carro Mod", "czp": 400},
+        22: {"name": "Vela de Ignição de Carro Mod", "czp": 400},
+        23: {"name": "Roda de Carro Mod", "czp": 400},
+        24: {"name": "Galão de Gasolina", "czp": 450}
+    },
+
+    "🎒 Equipamentos & Sobrevivência": {
+        25: {"name": "Machadinha", "czp": 200},
+        26: {"name": "Pedra de Amolar", "czp": 250},
+        27: {"name": "Kit Inicial", "czp": 500},
+        28: {"name": "Mochila MMG 120", "czp": 900},
         29: {"name": "Kit NBC Completo", "czp": 400},
-        19: {"name": "Massa Epóxi", "czp": 250},
-        34: {"name": "Nightvision", "czp": 600}
+        30: {"name": "Massa Epóxi", "czp": 250},
+        31: {"name": "Nightvision", "czp": 600}
     },
 
     "🪖 MMG Gear": {
-        17: {"name": "Set Militar MMG Alpine", "czp": 1500}
+        32: {"name": "Set Militar MMG Alpine", "czp": 1500}
     },
 
     "⚡ VIP & Serviços": {
-        32: {"name": "Status VIP 30 dias", "czp": 5500},
-        18: {"name": "Prioridade na Fila - 30 Dias", "czp": 1200}
+        33: {"name": "Status VIP 30 dias", "czp": 5500},
+        34: {"name": "Prioridade na Fila - 30 Dias", "czp": 1200}
     }
 }
 
-# Mantém compatibilidade com toda a lógica original
 SHOP_ITEMS = {}
 for category in SHOP_CATEGORIES.values():
     SHOP_ITEMS.update(category)
@@ -247,48 +249,58 @@ def generate_order_id():
 
 def build_shop_embed():
     embed = discord.Embed(
-        title="🏪 MERCADO CZP",
-        description="Use os botões abaixo para comprar itens ou consultar seu saldo.",
+        title="🏪 CARNAGE Z - MERCADO CZP",
+        description=(
+            "Bem-vindo ao mercado oficial do servidor! 🛍️\n"
+            "Use os botões interativos abaixo para realizar suas compras ou consultar dados.\n\n"
+            "**━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+        ),
         color=0x00FF88
     )
 
     for category_name, items in SHOP_CATEGORIES.items():
         value = ""
         for item_id, item in items.items():
-            value += f"ID {item_id} • {item['name']} • {item['czp']} CZP\n"
+            value += f"`ID {str(item_id).zfill(2)}` 🔹 **{item['name']}** ➔ `{item['czp']} CZP`\n"
 
         embed.add_field(
-            name=category_name,
-            value=value,
+            name=f"\n{category_name}",
+            value=value + "**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
             inline=False
         )
 
-    embed.set_footer(text="Carnage Z Store System")
+    embed.set_footer(text="Carnage Z Store System • Desenvolvido com carinho")
     return embed
 
 
 def build_czp_packages_embed():
     embed = discord.Embed(
-        title="💳 Adquirir CZP",
-        description="Escolha abaixo um pacote de CZP para solicitar.",
+        title="💳 ADQUIRIR MOEDAS CZP",
+        description=(
+            "Fortaleça sua jornada e ajude a manter o servidor online!\n"
+            "Escolha um dos pacotes abaixo utilizando o menu de seleção.\n\n"
+            "**━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+        ),
         color=0xFFD700
     )
 
     embed.add_field(
-        name="🎁 Grátis",
-        value="**Grátis - Saldo Inicial**\n1500 CZP\nDisponível 1 vez a cada 365 dias",
+        name="🎁 Benefício Gratuito",
+        value="`Gratuito` ➔ **Saldo Inicial**\n💰 **+1500 CZP**\n⏱️ *Disponível 1 vez a cada 365 dias.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
         inline=False
     )
 
+    paid_value = (
+        "💵 **R$ 5,00** ➔ `500 CZP` │ *Starter Pack*\n"
+        "💵 **R$ 10,00** ➔ `1.000 CZP` │ *Taxa Padrão*\n"
+        "💵 **R$ 20,00** ➔ `2.100 CZP` │ 🔥 *5% de Bônus incluso*\n"
+        "💵 **R$ 50,00** ➔ `5.500 CZP` │ 🔥 *10% de Bônus incluso*\n"
+        "💵 **R$ 100,00** ➔ `12.000 CZP` │ 💎 **20% de Bônus (Melhor Oferta!)**"
+    )
+
     embed.add_field(
-        name="💰 Pacotes pagos",
-        value=(
-            "**R$ 5,00** • 500 CZP • Starter Pack\n"
-            "**R$ 10,00** • 1.000 CZP • Standard Rate\n"
-            "**R$ 20,00** • 2.100 CZP • 5% Bonus included\n"
-            "**R$ 50,00** • 5.500 CZP • 10% Bonus included\n"
-            "**R$ 100,00** • 12.000 CZP • 20% Bonus (Best Value)"
-        ),
+        name="💰 Pacotes Disponíveis (PIX)",
+        value=paid_value,
         inline=False
     )
 
@@ -442,14 +454,14 @@ class CategorySelect(ui.Select):
         options = [
             discord.SelectOption(
                 label=category_name,
-                description="Ver itens desta categoria",
+                description=f"Ver itens de {category_name.split(' ')[-1]}",
                 value=category_name
             )
             for category_name in SHOP_CATEGORIES.keys()
         ]
 
         super().__init__(
-            placeholder="Selecione uma categoria primeiro",
+            placeholder="Selecione uma categoria primeiro...",
             min_values=1,
             max_values=1,
             options=options
@@ -459,7 +471,7 @@ class CategorySelect(ui.Select):
         selected_category = self.values[0]
 
         await interaction.response.send_message(
-            f"Categoria selecionada: **{selected_category}**\nAgora selecione o item que você quer comprar:",
+            f"📂 Categoria selecionada: **{selected_category}**\nEscolha o item abaixo para concluir o resgate/compra:",
             view=ItemSelectView(selected_category),
             ephemeral=True
         )
@@ -478,7 +490,7 @@ class ItemSelect(ui.Select):
 
         options = [
             discord.SelectOption(
-                label=f"{item_id} - {item['name']}",
+                label=f"ID {str(item_id).zfill(2)} - {item['name']}",
                 description=f"Custo: {item['czp']} CZP",
                 value=str(item_id)
             )
@@ -486,7 +498,7 @@ class ItemSelect(ui.Select):
         ]
 
         super().__init__(
-            placeholder="Selecione um item para comprar",
+            placeholder="Selecione o item desejado...",
             min_values=1,
             max_values=1,
             options=options
@@ -646,7 +658,7 @@ class CZPPackageSelect(ui.Select):
         ]
 
         super().__init__(
-            placeholder="Selecione um pacote de CZP",
+            placeholder="Selecione um pacote de CZP...",
             min_values=1,
             max_values=1,
             options=options
@@ -656,7 +668,6 @@ class CZPPackageSelect(ui.Select):
         selected_package_id = self.values[0]
         package = CZP_PACKAGES[selected_package_id]
 
-        # PACOTE GRÁTIS COM COOLDOWN DE 365 DIAS
         if selected_package_id == "starter":
             claims = load_starter_claims()
             uid = str(interaction.user.id)
@@ -727,7 +738,7 @@ class CZPPackageSelect(ui.Select):
 
             admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
             if admin_channel:
-                await admin_channel.send(embed=admin_embed)
+                await admin_channel.send(admin_embed)
 
             await interaction.response.send_message(
                 f"✅ Você recebeu **{package['czp']} CZP** grátis.\n"
@@ -736,7 +747,6 @@ class CZPPackageSelect(ui.Select):
             )
             return
 
-        # PACOTES PAGOS → ENVIA PIX E REGISTRA PEDIDO PARA O ADMIN
         order_id = generate_order_id()
 
         orders = load_orders()
@@ -758,9 +768,9 @@ class CZPPackageSelect(ui.Select):
             description=(
                 f"**Pedido:** `{order_id}`\n\n"
                 f"Você selecionou o pacote **{package['name']}**.\n\n"
-                f"**Valor:** {package['price_brl']}\n"
-                f"**CZP:** {package['czp']} CZP\n"
-                f"**Detalhe:** {package['bonus']}\n\n"
+                f"💵 **Valor:** {package['price_brl']}\n"
+                f"💰 **CZP:** {package['czp']} CZP\n"
+                f"✨ **Detalhe:** {package['bonus']}\n\n"
                 f"Faça o pagamento via PIX usando o QR Code ou copie o código abaixo."
             ),
             color=0x00C853,
@@ -868,7 +878,7 @@ class MainShopView(ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @ui.button(label="🛒 Comprar", style=discord.ButtonStyle.success, custom_id="czp_buy_button")
+    @ui.button(label="🛒 Comprar Itens", style=discord.ButtonStyle.success, custom_id="czp_buy_button")
     async def buy_button(self, interaction: discord.Interaction, button: ui.Button):
         await interaction.response.send_message(
             "Selecione primeiro a categoria do item:",
@@ -876,7 +886,7 @@ class MainShopView(ui.View):
             ephemeral=True
         )
 
-    @ui.button(label="💰 Ver saldo", style=discord.ButtonStyle.primary, custom_id="czp_balance_button")
+    @ui.button(label="💰 Ver Meu Saldo", style=discord.ButtonStyle.primary, custom_id="czp_balance_button")
     async def balance_button(self, interaction: discord.Interaction, button: ui.Button):
         balance = get_balance(interaction.user.id)
 
@@ -901,7 +911,7 @@ class MainShopView(ui.View):
                 ephemeral=True
             )
 
-    @ui.button(label="💳 Adquirir CZP", style=discord.ButtonStyle.secondary, custom_id="czp_acquire_button")
+    @ui.button(label="💳 Adquirir Moedas CZP", style=discord.ButtonStyle.secondary, custom_id="czp_acquire_button")
     async def acquire_czp_button(self, interaction: discord.Interaction, button: ui.Button):
         await interaction.response.send_message(
             embed=build_czp_packages_embed(),
@@ -927,7 +937,7 @@ async def on_ready():
 async def setup_shop(ctx):
     async for message in ctx.channel.history(limit=50):
         if message.author == bot.user and message.embeds:
-            if message.embeds[0].title == "🏪 MERCADO CZP":
+            if message.embeds[0].title == "🏪 CARNAGE Z - MERCADO CZP":
                 await message.delete()
 
     embed = build_shop_embed()
