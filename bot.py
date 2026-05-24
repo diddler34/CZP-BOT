@@ -42,7 +42,7 @@ PIX_CODE = """00020126580014br.gov.bcb.pix013696f850dd-18da-4a87-a008-51e6a9f1e1
 PIX_QR_FILE = os.path.join(script_dir, "pix_qr.png")
 
 # VALOR DA RECOMPENSA DIÁRIA
-DAILY_REWARD_AMOUNT = 150  
+DAILY_REWARD_AMOUNT = 25  
 
 def load_data():
     try:
