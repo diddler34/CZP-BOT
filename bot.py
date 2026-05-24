@@ -116,9 +116,6 @@ SHOP_CATEGORIES = {
         5: {"name": "Bandeira", "czp": 300},
         6: {"name": "Kit Bandeira", "czp": 800},
         7: {"name": "Chapa de Metal (10)", "czp": 1800},
-        8: {"name": "Cimento (2und.)", "czp": 400},
-        9: {"name": "Mortar Mix (2und.)", "czp": 400},
-        10: {"name": "Betoneira", "czp": 2500},
         11: {"name": "Kit Base Básico", "czp": 500},
         12: {"name": "Kit Base Completo", "czp": 2500}
     },
@@ -1216,4 +1213,3 @@ async def leaderboard(ctx):
 
 
 bot.run(TOKEN)
-
