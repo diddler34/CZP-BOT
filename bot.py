@@ -880,7 +880,7 @@ class CZPPackageSelect(ui.Select):
                 "Abra sua DM e tente novamente, ou fale com a equipe."
             )
 
-        await interaction.response.send_message(user_msg, ephemeral=True)
+        await interaction.call_back.send_message(user_msg, ephemeral=True)
 
 
 class CZPPackageView(ui.View):
@@ -931,14 +931,24 @@ class MainShopView(ui.View):
 
     @ui.button(label="📅 CZP Diário", style=discord.ButtonStyle.danger, custom_id="czp_daily_button")
     async def daily_button(self, interaction: discord.Interaction, button: ui.Button):
-        """Botão para resgatar o prêmio diário com checagem anti-fraude."""
+        """Botão para resgatar o prêmio diário com checagem anti-fraude aprimorada."""
         uid = str(interaction.user.id)
         now = datetime.now()
 
-        # SISTEMA ANTI-FRAUDE: Verifica se o status do perfil indica que está rodando DayZ
+        # Resgata o membro diretamente do cache/guilda do Discord para ler as atividades atualizadas
+        member = interaction.guild.get_member(interaction.user.id) if interaction.guild else None
+        
+        if not member:
+            await interaction.response.send_message(
+                "❌ Não consegui verificar seu perfil na guilda. Certifique-se de usar o botão de dentro do servidor.",
+                ephemeral=True
+            )
+            return
+
+        # SISTEMA ANTI-FRAUDE CORRIGIDO: Verifica se o status do perfil indica que está rodando DayZ
         is_playing_dayz = False
-        if interaction.user.activities:
-            for activity in interaction.user.activities:
+        if member.activities:
+            for activity in member.activities:
                 if activity.type == discord.ActivityType.playing and "dayz" in activity.name.lower():
                     is_playing_dayz = True
                     break
@@ -946,7 +956,9 @@ class MainShopView(ui.View):
         if not is_playing_dayz:
             await interaction.response.send_message(
                 f"⚠️ **Anti-Fraude:** Você precisa estar com o jogo **DayZ** aberto e ativo no seu status do Discord para coletar seu bônus diário! 🎮\n\n"
-                f"*Certifique-se de que a opção 'Exibir atividade atual como mensagem de status' está ligada nas configurações de privacidade do seu Discord.*",
+                f"*Certifique-se de que:\n"
+                f"1. O jogo DayZ está aberto e rodando no seu PC.\n"
+                f"2. A opção 'Exibir atividade atual como mensagem de status' está LIGADA nas configurações de Privacidade de Atividade do seu Discord.*",
                 ephemeral=True
             )
             return
