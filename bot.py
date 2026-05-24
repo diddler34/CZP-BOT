@@ -21,9 +21,12 @@ ADMIN_CHANNEL_ID = 1487729614976712704
 if not TOKEN:
     raise ValueError("BOT_TOKEN não foi encontrado no arquivo .env")
 
+# ATENÇÃO: Para o sistema anti-fraude detectar o jogo no perfil do usuário,
+# você PRECISA ativar a opção "Presence Intent" no Discord Developer Portal!
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.presences = True  
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -33,10 +36,13 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 DATA_FILE = os.path.join(script_dir, "coins.json")
 STARTER_FILE = os.path.join(script_dir, "starter_claims.json")
 ORDERS_FILE = os.path.join(script_dir, "orders.json")
+DAILY_FILE = os.path.join(script_dir, "daily_claims.json")
 
 PIX_CODE = """00020126580014br.gov.bcb.pix013696f850dd-18da-4a87-a008-51e6a9f1e1c95204000053039865802BR5919YGOR ATTILA DE LIMA6009Sao Paulo62290525REC69D91E76AB4C03429651466304A923"""
 PIX_QR_FILE = os.path.join(script_dir, "pix_qr.png")
 
+# VALOR DA RECOMPENSA DIÁRIA
+DAILY_REWARD_AMOUNT = 150  
 
 def load_data():
     try:
@@ -83,8 +89,23 @@ def save_orders(data):
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 
+def load_daily_claims():
+    try:
+        with open(DAILY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError:
+        return {}
+
+
+def save_daily_claims(data):
+    with open(DAILY_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+
 # =========================
-# ITENS DA LOJA (ORGANIZED & EXPANDED)
+# ITENS DA LOJA
 # =========================
 SHOP_CATEGORIES = {
     "🧱 Construção & Kits de Base": {
@@ -116,9 +137,9 @@ SHOP_CATEGORIES = {
     "🔧 Peças & Utilitários de Carro": {
         18: {"name": "Chave de Carro", "czp": 1000},
         19: {"name": "Lock Pick de Carro", "czp": 3000},
-        20: {"name": "Bateria de Carro", "czp": 400},
-        21: {"name": "Radiador de Carro", "czp": 400},
-        22: {"name": "Vela de Ignição de Carro", "czp": 400},
+        20: {"name": "Bateria de Carro Mod", "czp": 400},
+        21: {"name": "Radiador de Carro Mod", "czp": 400},
+        22: {"name": "Vela de Ignição de Carro Mod", "czp": 400},
         23: {"name": "Roda de Carro Mod", "czp": 400},
         24: {"name": "Galão de Gasolina", "czp": 450}
     },
@@ -910,6 +931,63 @@ class MainShopView(ui.View):
                 f"⚠️ Não consegui te mandar DM.\nSeu saldo atual é **{balance} CZP**",
                 ephemeral=True
             )
+
+    @ui.button(label="📅 CZP Diário", style=discord.ButtonStyle.danger, custom_id="czp_daily_button")
+    async def daily_button(self, interaction: discord.Interaction, button: ui.Button):
+        """Botão para resgatar o prêmio diário com checagem anti-fraude."""
+        uid = str(interaction.user.id)
+        now = datetime.now()
+
+        # SISTEMA ANTI-FRAUDE: Verifica se o status do perfil indica que está rodando DayZ
+        is_playing_dayz = False
+        if interaction.user.activities:
+            for activity in interaction.user.activities:
+                if activity.type == discord.ActivityType.playing and "dayz" in activity.name.lower():
+                    is_playing_dayz = True
+                    break
+
+        if not is_playing_dayz:
+            await interaction.response.send_message(
+                f"⚠️ **Anti-Fraude:** Você precisa estar com o jogo **DayZ** aberto e ativo no seu status do Discord para coletar seu bônus diário! 🎮\n\n"
+                f"*Certifique-se de que a opção 'Exibir atividade atual como mensagem de status' está ligada nas configurações de privacidade do seu Discord.*",
+                ephemeral=True
+            )
+            return
+
+        # Controle de Tempo (24 horas)
+        claims = load_daily_claims()
+        if uid in claims:
+            last_claim = datetime.fromisoformat(claims[uid])
+            cooldown = timedelta(hours=24)
+
+            if now - last_claim < cooldown:
+                remaining = cooldown - (now - last_claim)
+                hours = remaining.seconds // 3600
+                minutes = (remaining.seconds % 3600) // 60
+                await interaction.response.send_message(
+                    f"❌ Você já coletou seu bônus de hoje! Volte em **{hours}h e {minutes}min**.",
+                    ephemeral=True
+                )
+                return
+
+        # Concessão do Saldo
+        add_balance(interaction.user.id, DAILY_REWARD_AMOUNT)
+        claims[uid] = now.isoformat()
+        save_daily_claims(claims)
+
+        new_balance = get_balance(interaction.user.id)
+
+        embed = discord.Embed(
+            title="🎁 Bônus Diário Resgatado!",
+            description="Obrigado por jogar ativamente no servidor Carnage Z!",
+            color=0x2ECC71,
+            timestamp=now
+        )
+        embed.add_field(name="Ganho", value=f"**+{DAILY_REWARD_AMOUNT} CZP** 💰", inline=True)
+        embed.add_field(name="Saldo Atualizado", value=f"**{new_balance} CZP** 💳", inline=True)
+        embed.set_footer(text="Amanhã tem mais bônus disponível!")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @ui.button(label="💳 Adquirir Moedas CZP", style=discord.ButtonStyle.secondary, custom_id="czp_acquire_button")
     async def acquire_czp_button(self, interaction: discord.Interaction, button: ui.Button):
