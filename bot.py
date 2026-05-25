@@ -116,8 +116,9 @@ SHOP_CATEGORIES = {
         5: {"name": "Bandeira", "czp": 300},
         6: {"name": "Kit Bandeira", "czp": 800},
         7: {"name": "Chapa de Metal (10)", "czp": 1800},
-        11: {"name": "Kit Base Básico", "czp": 500},
-        12: {"name": "Kit Base Completo", "czp": 2500}
+        8: {"name": "Bica de Água", "czp": 2500},
+        11: {"name": "Kit Base Básico", "czp": 1000},
+        12: {"name": "Kit Base Completo", "czp": 4200}
     },
 
     "📦 Armazenamento": {
@@ -880,7 +881,7 @@ class CZPPackageSelect(ui.Select):
                 "Abra sua DM e tente novamente, ou fale com a equipe."
             )
 
-        await interaction.call_back.send_message(user_msg, ephemeral=True)
+        await interaction.response.send_message(user_msg, ephemeral=True)
 
 
 class CZPPackageView(ui.View):
