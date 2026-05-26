@@ -120,10 +120,10 @@ SHOP_CATEGORIES = {
     "🔧 Peças & Utilitários de Carro": {
         18: {"name": "Chave de Carro", "czp": 1000},
         19: {"name": "Lock Pick de Carro", "czp": 3000},
-        20: {"name": "Bateria de Carro Mod", "czp": 400},
-        21: {"name": "Radiador de Carro Mod", "czp": 400},
-        22: {"name": "Vela de Ignição de Carro Mod", "czp": 400},
-        23: {"name": "Roda de Carro Mod", "czp": 400},
+        20: {"name": "Bateria de Carro", "czp": 400},
+        21: {"name": "Radiador de Carro", "czp": 400},
+        22: {"name": "Vela de Ignição de Carro", "czp": 400},
+        23: {"name": "Roda de Carro", "czp": 400},
         24: {"name": "Galão de Gasolina", "czp": 450}
     },
 
