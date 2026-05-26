@@ -21,8 +21,6 @@ ADMIN_CHANNEL_ID = 1487729614976712704
 if not TOKEN:
     raise ValueError("BOT_TOKEN não foi encontrado no arquivo .env")
 
-# ATENÇÃO: Para o sistema anti-fraude detectar o jogo no perfil do usuário,
-# você PRECISA ativar a opção "Presence Intent" no Discord Developer Portal!
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -36,25 +34,27 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 DATA_FILE = os.path.join(script_dir, "coins.json")
 STARTER_FILE = os.path.join(script_dir, "starter_claims.json")
 ORDERS_FILE = os.path.join(script_dir, "orders.json")
-DAILY_FILE = os.path.join(script_dir, "daily_claims.json")
 
 PIX_CODE = """00020126580014br.gov.bcb.pix013696f850dd-18da-4a87-a008-51e6a9f1e1c95204000053039865802BR5919YGOR ATTILA DE LIMA6009Sao Paulo62290525REC69D91E76AB4C03429651466304A923"""
 PIX_QR_FILE = os.path.join(script_dir, "pix_qr.png")
 
-# VALOR DA RECOMPENSA DIÁRIA
-DAILY_REWARD_AMOUNT = 25  
-
 def load_data():
     try:
+        if not os.path.exists(DATA_FILE):
+            return {}
         with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError:
-        return {}
+            content = f.read().strip()
+            if not content:
+                return {}
+            return json.loads(content)
+    except (json.JSONDecodeError, PermissionError, IOError) as e:
+        print(f"⚠️ Erro ao ler coins.json (Evitando reset de dados): {e}")
+        return None
 
 
 def save_data(data):
+    if data is None:
+        return
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
@@ -86,21 +86,6 @@ def load_orders():
 
 def save_orders(data):
     with open(ORDERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-
-
-def load_daily_claims():
-    try:
-        with open(DAILY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError:
-        return {}
-
-
-def save_daily_claims(data):
-    with open(DAILY_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 
@@ -214,11 +199,15 @@ CZP_PACKAGES = {
 # =========================
 def get_balance(user_id: int) -> int:
     data = load_data()
+    if data is None:
+        return 0
     return int(data.get(str(user_id), 0))
 
 
 def remove_balance(user_id: int, amount: int) -> bool:
     data = load_data()
+    if data is None:
+        return False
     uid = str(user_id)
 
     current_balance = int(data.get(uid, 0))
@@ -230,11 +219,14 @@ def remove_balance(user_id: int, amount: int) -> bool:
     return True
 
 
-def add_balance(user_id: int, amount: int):
+def add_balance(user_id: int, amount: int) -> bool:
     data = load_data()
+    if data is None:
+        return False
     uid = str(user_id)
     data[uid] = int(data.get(uid, 0)) + amount
     save_data(data)
+    return True
 
 
 async def send_dm_safe(user: discord.User | discord.Member, embed: discord.Embed):
@@ -930,76 +922,7 @@ class MainShopView(ui.View):
                 ephemeral=True
             )
 
-    @ui.button(label="📅 CZP Diário", style=discord.ButtonStyle.danger, custom_id="czp_daily_button")
-    async def daily_button(self, interaction: discord.Interaction, button: ui.Button):
-        """Botão para resgatar o prêmio diário com checagem anti-fraude aprimorada."""
-        uid = str(interaction.user.id)
-        now = datetime.now()
-
-        # Resgata o membro diretamente do cache/guilda do Discord para ler as atividades atualizadas
-        member = interaction.guild.get_member(interaction.user.id) if interaction.guild else None
-        
-        if not member:
-            await interaction.response.send_message(
-                "❌ Não consegui verificar seu perfil na guilda. Certifique-se de usar o botão de dentro do servidor.",
-                ephemeral=True
-            )
-            return
-
-        # SISTEMA ANTI-FRAUDE CORRIGIDO: Verifica se o status do perfil indica que está rodando DayZ
-        is_playing_dayz = False
-        if member.activities:
-            for activity in member.activities:
-                if activity.type == discord.ActivityType.playing and "dayz" in activity.name.lower():
-                    is_playing_dayz = True
-                    break
-
-        if not is_playing_dayz:
-            await interaction.response.send_message(
-                f"⚠️ **Anti-Fraude:** Você precisa estar com o jogo **DayZ** aberto e ativo no seu status do Discord para coletar seu bônus diário! 🎮\n\n"
-                f"*Certifique-se de que:\n"
-                f"1. O jogo DayZ está aberto e rodando no seu PC.\n"
-                f"2. A opção 'Exibir atividade atual como mensagem de status' está LIGADA nas configurações de Privacidade de Atividade do seu Discord.*",
-                ephemeral=True
-            )
-            return
-
-        # Controle de Tempo (24 horas)
-        claims = load_daily_claims()
-        if uid in claims:
-            last_claim = datetime.fromisoformat(claims[uid])
-            cooldown = timedelta(hours=24)
-
-            if now - last_claim < cooldown:
-                remaining = cooldown - (now - last_claim)
-                hours = remaining.seconds // 3600
-                minutes = (remaining.seconds % 3600) // 60
-                await interaction.response.send_message(
-                    f"❌ Você já coletou seu bônus de hoje! Volte em **{hours}h e {minutes}min**.",
-                    ephemeral=True
-                )
-                return
-
-        # Concessão do Saldo
-        add_balance(interaction.user.id, DAILY_REWARD_AMOUNT)
-        claims[uid] = now.isoformat()
-        save_daily_claims(claims)
-
-        new_balance = get_balance(interaction.user.id)
-
-        embed = discord.Embed(
-            title="🎁 Bônus Diário Resgatado!",
-            description="Obrigado por jogar ativamente no servidor Carnage Z!",
-            color=0x2ECC71,
-            timestamp=now
-        )
-        embed.add_field(name="Ganho", value=f"**+{DAILY_REWARD_AMOUNT} CZP** 💰", inline=True)
-        embed.add_field(name="Saldo Atualizado", value=f"**{new_balance} CZP** 💳", inline=True)
-        embed.set_footer(text="Amanhã tem mais bônus disponível!")
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @ui.button(label="💳 Adquirir Moedas CZP", style=discord.ButtonStyle.secondary, custom_id="czp_acquire_button")
+    @ui.button(label="💳 Adquirir Moedas CZP", style=discord.ButtonStyle.primary, custom_id="czp_acquire_button")
     async def acquire_czp_button(self, interaction: discord.Interaction, button: ui.Button):
         await interaction.response.send_message(
             embed=build_czp_packages_embed(),
@@ -1043,6 +966,10 @@ async def addcoins(ctx, member: discord.Member, amount: int):
         return
 
     data = load_data()
+    if data is None:
+        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+        return
+        
     uid = str(member.id)
     data[uid] = int(data.get(uid, 0)) + amount
     save_data(data)
@@ -1058,6 +985,10 @@ async def setcoins(ctx, member: discord.Member, amount: int):
         return
 
     data = load_data()
+    if data is None:
+        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+        return
+        
     data[str(member.id)] = amount
     save_data(data)
 
@@ -1080,6 +1011,9 @@ async def addall(ctx, amount: int):
         return
 
     data = load_data()
+    if data is None:
+        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+        return
 
     if not data:
         await ctx.send("⚠️ Nenhum usuário encontrado no banco de dados.")
@@ -1100,6 +1034,9 @@ async def removeall(ctx, amount: int):
         return
 
     data = load_data()
+    if data is None:
+        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+        return
 
     if not data:
         await ctx.send("⚠️ Nenhum usuário encontrado no banco de dados.")
@@ -1117,6 +1054,9 @@ async def removeall(ctx, amount: int):
 @commands.has_permissions(administrator=True)
 async def resetall(ctx):
     data = load_data()
+    if data is None:
+        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+        return
 
     if not data:
         await ctx.send("⚠️ Nenhum usuário para resetar.")
@@ -1137,6 +1077,10 @@ async def removecoins(ctx, member: discord.Member, amount: int):
         return
 
     data = load_data()
+    if data is None:
+        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+        return
+        
     uid = str(member.id)
     current_balance = int(data.get(uid, 0))
 
@@ -1161,7 +1105,11 @@ async def confirmczp(ctx, member: discord.Member, amount: int):
         await ctx.send("❌ O valor precisa ser maior que 0.")
         return
 
-    add_balance(member.id, amount)
+    success = add_balance(member.id, amount)
+    if not success:
+        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+        return
+        
     new_balance = get_balance(member.id)
 
     await ctx.send(
@@ -1189,6 +1137,9 @@ async def confirmczp(ctx, member: discord.Member, amount: int):
 @bot.command()
 async def leaderboard(ctx):
     data = load_data()
+    if data is None:
+        await ctx.send("❌ Erro ao carregar os dados do Leaderboard.")
+        return
 
     if not data:
         await ctx.send("⚠️ Ainda não há dados de saldo para mostrar.")
