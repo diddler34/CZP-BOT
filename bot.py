@@ -286,56 +286,58 @@ def save_orders(data):
 # =========================
 SHOP_CATEGORIES = {
     "🧱 Construção & Kits de Base": {
-        1: {"name": "Caixa de Pregos", "czp": 300},
-        2: {"name": "Pacote de Tábuas (30)", "czp": 400},
-        3: {"name": "Serrote", "czp": 150},
-        4: {"name": "CodeLock", "czp": 450},
-        5: {"name": "Bandeira", "czp": 300},
-        6: {"name": "Kit Bandeira", "czp": 800},
-        7: {"name": "Chapa de Metal (10)", "czp": 1800},
-        8: {"name": "Bica de Água", "czp": 2500},
-        11: {"name": "Kit Base Básico", "czp": 1000},
-        12: {"name": "Kit Base Completo", "czp": 4200}
+        1: {"name": "Caixa de Pregos", "czp": 400},
+        2: {"name": "Pacote de Tábuas (30)", "czp": 550},
+        3: {"name": "Serrote", "czp": 200},
+        4: {"name": "CodeLock", "czp": 900},
+        5: {"name": "Bandeira", "czp": 600},
+        6: {"name": "Kit Bandeira", "czp": 1400},
+        7: {"name": "Chapa de Metal (10)", "czp": 2200},
+        8: {"name": "Bica de Água", "czp": 2600},
+        9: {"name": "Arame Farpado", "czp": 500},
+        10: {"name": "Kit Arame Farpado", "czp": 1400},
+        11: {"name": "Kit Base Básico", "czp": 2600},
+        12: {"name": "Kit Base Completo", "czp": 6425}
     },
 
     "📦 Armazenamento": {
-        13: {"name": "Container Pequeno", "czp": 300},
-        14: {"name": "Container Médio", "czp": 500},
-        15: {"name": "Armário Militar Grande", "czp": 850}
+        13: {"name": "Container Pequeno", "czp": 500},
+        14: {"name": "Container Médio", "czp": 900},
+        15: {"name": "Armário Militar Grande", "czp": 1600}
     },
 
     "🏎️ Veículos Mod": {
-        16: {"name": "Mod Car 4x4", "czp": 3000},
-        17: {"name": "Mod Car Sedan", "czp": 3000}
+        16: {"name": "Mod Car 4x4", "czp": 5000},
+        17: {"name": "Mod Car Sedan", "czp": 4750}
     },
 
     "🔧 Peças & Utilitários de Carro": {
-        18: {"name": "Chave de Carro", "czp": 1000},
-        19: {"name": "Lock Pick de Carro", "czp": 3000},
-        20: {"name": "Bateria de Carro", "czp": 400},
-        21: {"name": "Radiador de Carro", "czp": 400},
+        18: {"name": "Chave de Carro", "czp": 1275},
+        19: {"name": "Lock Pick de Carro", "czp": 2575},
+        20: {"name": "Bateria de Carro", "czp": 500},
+        21: {"name": "Radiador de Carro", "czp": 500},
         22: {"name": "Vela de Ignição de Carro", "czp": 400},
-        23: {"name": "Roda de Carro", "czp": 400},
-        24: {"name": "Galão de Gasolina", "czp": 450}
+        23: {"name": "Roda de Carro", "czp": 600},
+        24: {"name": "Galão de Gasolina", "czp": 500}
     },
 
     "🎒 Equipamentos & Sobrevivência": {
-        25: {"name": "Machadinha", "czp": 200},
-        26: {"name": "Pedra de Amolar", "czp": 250},
-        27: {"name": "Kit Inicial", "czp": 500},
-        28: {"name": "Mochila MMG 120", "czp": 900},
-        29: {"name": "Kit NBC Completo", "czp": 400},
-        30: {"name": "Massa Epóxi", "czp": 250},
-        31: {"name": "Nightvision", "czp": 600}
+        25: {"name": "Machadinha", "czp": 300},
+        26: {"name": "Pedra de Amolar", "czp": 350},
+        27: {"name": "Kit Inicial", "czp": 750},
+        28: {"name": "Mochila MMG 120", "czp": 1600},
+        29: {"name": "Kit NBC Completo", "czp": 1800},
+        30: {"name": "Massa Epóxi", "czp": 400},
+        31: {"name": "Nightvision", "czp": 2600}
     },
 
     "🪖 MMG Gear": {
-        32: {"name": "Set Militar MMG Alpine", "czp": 1500}
+        32: {"name": "Set Militar MMG Alpine", "czp": 2600}
     },
 
     "⚡ VIP & Serviços": {
-        33: {"name": "Status VIP 30 dias", "czp": 5500},
-        34: {"name": "Prioridade na Fila - 30 Dias", "czp": 1200}
+        33: {"name": "Status VIP 30 dias", "czp": 2600},
+        34: {"name": "Prioridade na Fila - 30 Dias", "czp": 1275}
     }
 }
 
@@ -350,38 +352,44 @@ CZP_PACKAGES = {
     "starter": {
         "name": "Grátis - Saldo Inicial",
         "price_brl": "R$ 0,00",
-        "czp": 1500,
+        "czp": 400,
         "bonus": "Disponível a cada 365 dias"
     },
     "p1": {
         "name": "Starter Pack",
-        "price_brl": "R$ 5,00",
-        "czp": 500,
-        "bonus": "Starter Pack"
+        "price_brl": "R$ 9,90",
+        "czp": 400,
+        "bonus": "Pacote inicial"
     },
     "p2": {
-        "name": "Standard Rate",
-        "price_brl": "R$ 10,00",
-        "czp": 1000,
-        "bonus": "Taxa padrão"
+        "name": "Survivor Pack",
+        "price_brl": "R$ 34,90",
+        "czp": 1275,
+        "bonus": "Pacote sobrevivente"
     },
     "p3": {
-        "name": "5% Bonus Included",
-        "price_brl": "R$ 20,00",
-        "czp": 2100,
-        "bonus": "5% de bônus incluso"
+        "name": "Raider Pack",
+        "price_brl": "R$ 59,90",
+        "czp": 2575,
+        "bonus": "Pacote raider"
     },
     "p4": {
-        "name": "10% Bonus Included",
-        "price_brl": "R$ 50,00",
-        "czp": 5500,
-        "bonus": "10% de bônus incluso"
+        "name": "Warlord Pack",
+        "price_brl": "R$ 124,90",
+        "czp": 4750,
+        "bonus": "Pacote avançado"
     },
     "p5": {
-        "name": "20% Bonus (Best Value)",
-        "price_brl": "R$ 100,00",
-        "czp": 12000,
-        "bonus": "20% de bônus - Melhor custo benefício"
+        "name": "Black Market Pack",
+        "price_brl": "R$ 174,90",
+        "czp": 6425,
+        "bonus": "+775 CZP bônus"
+    },
+    "p6": {
+        "name": "Carnage Elite Pack",
+        "price_brl": "R$ 349,90",
+        "czp": 12850,
+        "bonus": "+2150 CZP bônus"
     }
 }
 
@@ -408,6 +416,8 @@ ITEM_ES = {
     "Kit Bandeira": "Kit de Bandera",
     "Chapa de Metal (10)": "Chapa de Metal (10)",
     "Bica de Água": "Tanque de Agua",
+    "Arame Farpado": "Alambre de Púas",
+    "Kit Arame Farpado": "Kit de Alambre de Púas",
     "Kit Base Básico": "Kit de Base Básico",
     "Kit Base Completo": "Kit de Base Completo",
     "Container Pequeno": "Contenedor Pequeño",
@@ -437,11 +447,20 @@ ITEM_ES = {
 PACKAGE_ES = {
     "Grátis - Saldo Inicial": "Gratis - Saldo Inicial",
     "Starter Pack": "Paquete Inicial",
+    "Survivor Pack": "Paquete Sobreviviente",
+    "Raider Pack": "Paquete Raider",
+    "Warlord Pack": "Paquete Warlord",
+    "Black Market Pack": "Paquete Mercado Negro",
+    "Carnage Elite Pack": "Paquete Carnage Elite",
     "Standard Rate": "Tarifa Estándar",
     "5% Bonus Included": "5% de Bono Incluido",
     "10% Bonus Included": "10% de Bono Incluido",
     "20% Bonus (Best Value)": "20% de Bono (Mejor Oferta)",
     "Disponível a cada 365 dias": "Disponible cada 365 días",
+    "Pacote inicial": "Paquete inicial",
+    "Pacote sobrevivente": "Paquete sobreviviente",
+    "Pacote raider": "Paquete raider",
+    "Pacote avançado": "Paquete avanzado",
     "Taxa padrão": "Tarifa estándar",
     "5% de bônus incluso": "5% de bono incluido",
     "10% de bônus incluso": "10% de bono incluido",
@@ -905,33 +924,38 @@ class CZPPackageSelect(ui.Select):
         options = [
             discord.SelectOption(
                 label="Grátis - Saldo Inicial",
-                description="1500 CZP • disponível a cada 365 dias",
+                description="400 CZP • disponível a cada 365 dias",
                 value="starter"
             ),
             discord.SelectOption(
-                label="R$ 5,00 • 500 CZP",
-                description="Pacote Inicial",
+                label="R$ 9,90 • 400 CZP",
+                description="Starter Pack",
                 value="p1"
             ),
             discord.SelectOption(
-                label="R$ 10,00 • 1.000 CZP",
-                description="Preço Base",
+                label="R$ 34,90 • 1.275 CZP",
+                description="Survivor Pack",
                 value="p2"
             ),
             discord.SelectOption(
-                label="R$ 20,00 • 2.100 CZP",
-                description="5% de bônus incluído",
+                label="R$ 59,90 • 2.575 CZP",
+                description="Raider Pack",
                 value="p3"
             ),
             discord.SelectOption(
-                label="R$ 50,00 • 5.500 CZP",
-                description="+10% de Bônus",
+                label="R$ 124,90 • 4.750 CZP",
+                description="Warlord Pack",
                 value="p4"
             ),
             discord.SelectOption(
-                label="R$ 100,00 • 12.000 CZP",
-                description="+20% de Bônus (Mais Vantajoso)",
+                label="R$ 174,90 • 6.425 CZP",
+                description="Black Market Pack • +775 bônus",
                 value="p5"
+            ),
+            discord.SelectOption(
+                label="R$ 349,90 • 12.850 CZP",
+                description="Carnage Elite Pack • +2150 bônus",
+                value="p6"
             ),
         ]
 
@@ -1408,12 +1432,13 @@ class BuySelectViewES(ui.View):
 class CZPPackageSelectES(ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label="Gratis - Saldo Inicial", description="1500 CZP • disponible cada 365 días", value="starter"),
-            discord.SelectOption(label="R$ 5,00 • 500 CZP", description="Paquete Inicial", value="p1"),
-            discord.SelectOption(label="R$ 10,00 • 1.000 CZP", description="Precio Base", value="p2"),
-            discord.SelectOption(label="R$ 20,00 • 2.100 CZP", description="5% de bono incluido", value="p3"),
-            discord.SelectOption(label="R$ 50,00 • 5.500 CZP", description="+10% de Bono", value="p4"),
-            discord.SelectOption(label="R$ 100,00 • 12.000 CZP", description="+20% de Bono (Más Ventajoso)", value="p5"),
+            discord.SelectOption(label="Gratis - Saldo Inicial", description="400 CZP • disponible cada 365 días", value="starter"),
+            discord.SelectOption(label="R$ 9,90 • 400 CZP", description="Paquete Inicial", value="p1"),
+            discord.SelectOption(label="R$ 34,90 • 1.275 CZP", description="Paquete Sobreviviente", value="p2"),
+            discord.SelectOption(label="R$ 59,90 • 2.575 CZP", description="Paquete Raider", value="p3"),
+            discord.SelectOption(label="R$ 124,90 • 4.750 CZP", description="Paquete Warlord", value="p4"),
+            discord.SelectOption(label="R$ 174,90 • 6.425 CZP", description="Mercado Negro • +775 bono", value="p5"),
+            discord.SelectOption(label="R$ 349,90 • 12.850 CZP", description="Carnage Elite • +2150 bono", value="p6"),
         ]
 
         super().__init__(placeholder="Selecciona un paquete de CZP...", min_values=1, max_values=1, options=options)
