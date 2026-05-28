@@ -307,8 +307,8 @@ SHOP_CATEGORIES = {
     },
 
     "🏎️ Veículos Mod": {
-        16: {"name": "Mod Car 4x4", "czp": 5000},
-        17: {"name": "Mod Car Sedan", "czp": 4750}
+        16: {"name": "Mod Car 4x4", "czp": 3800},
+        17: {"name": "Mod Car Sedan", "czp": 3800}
     },
 
     "🔧 Peças & Utilitários de Carro": {
@@ -357,7 +357,7 @@ CZP_PACKAGES = {
     },
     "p1": {
         "name": "Starter Pack",
-        "price_brl": "R$ 9,90",
+        "price_brl": "R$ 10,90",
         "czp": 400,
         "bonus": "Pacote inicial"
     },
@@ -464,7 +464,9 @@ PACKAGE_ES = {
     "Taxa padrão": "Tarifa estándar",
     "5% de bônus incluso": "5% de bono incluido",
     "10% de bônus incluso": "10% de bono incluido",
-    "20% de bônus - Melhor custo benefício": "20% de bono - Mejor costo-beneficio"
+    "20% de bônus - Melhor custo benefício": "20% de bono - Mejor costo-beneficio",
+    "+775 CZP bônus": "+775 CZP bono",
+    "+2150 CZP bônus": "+2150 CZP bono"
 }
 
 
@@ -583,16 +585,17 @@ def build_czp_packages_embed():
 
     embed.add_field(
         name="🎁 Benefício Gratuito",
-        value="`Gratuito` ➔ **Saldo Inicial**\n💰 **+1500 CZP**\n⏱️ *Disponível 1 vez a cada 365 dias.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
+        value="`Gratuito` ➔ **Saldo Inicial**\n💰 **+400 CZP**\n⏱️ *Disponível 1 vez a cada 365 dias.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
         inline=False
     )
 
     paid_value = (
-        "💵 **R$ 5,00** ➔ `500 CZP` │ *Starter Pack*\n"
-        "💵 **R$ 10,00** ➔ `1.000 CZP` │ *Taxa Padrão*\n"
-        "💵 **R$ 20,00** ➔ `2.100 CZP` │ 🔥 *5% de Bônus incluso*\n"
-        "💵 **R$ 50,00** ➔ `5.500 CZP` │ 🔥 *10% de Bônus incluso*\n"
-        "💵 **R$ 100,00** ➔ `12.000 CZP` │ 💎 **20% de Bônus (Melhor Oferta!)**"
+        "💵 **R$ 10,90** ➔ `400 CZP` │ *Starter Pack*\n"
+        "💵 **R$ 34,90** ➔ `1.275 CZP` │ *Survivor Pack*\n"
+        "💵 **R$ 59,90** ➔ `2.575 CZP` │ *Raider Pack*\n"
+        "💵 **R$ 124,90** ➔ `4.750 CZP` │ *Warlord Pack*\n"
+        "💵 **R$ 174,90** ➔ `6.425 CZP` │ 🔥 *+775 CZP bônus*\n"
+        "💵 **R$ 349,90** ➔ `12.850 CZP` │ 💎 **+2150 CZP bônus**"
     )
 
     embed.add_field(
@@ -928,7 +931,7 @@ class CZPPackageSelect(ui.Select):
                 value="starter"
             ),
             discord.SelectOption(
-                label="R$ 9,90 • 400 CZP",
+                label="R$ 10,90 • 400 CZP",
                 description="Starter Pack",
                 value="p1"
             ),
@@ -1216,16 +1219,17 @@ def build_czp_packages_embed_es():
 
     embed.add_field(
         name="🎁 Beneficio Gratuito",
-        value="`Gratis` ➔ **Saldo Inicial**\n💰 **+1500 CZP**\n⏱️ *Disponible 1 vez cada 365 días.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
+        value="`Gratis` ➔ **Saldo Inicial**\n💰 **+400 CZP**\n⏱️ *Disponible 1 vez cada 365 días.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
         inline=False
     )
 
     paid_value = (
-        "💵 **R$ 5,00** ➔ `500 CZP` │ *Paquete Inicial*\n"
-        "💵 **R$ 10,00** ➔ `1.000 CZP` │ *Tarifa Estándar*\n"
-        "💵 **R$ 20,00** ➔ `2.100 CZP` │ 🔥 *5% de Bono incluido*\n"
-        "💵 **R$ 50,00** ➔ `5.500 CZP` │ 🔥 *10% de Bono incluido*\n"
-        "💵 **R$ 100,00** ➔ `12.000 CZP` │ 💎 **20% de Bono (¡Mejor Oferta!)**"
+        "💵 **R$ 10,90** ➔ `400 CZP` │ *Paquete Inicial*\n"
+        "💵 **R$ 34,90** ➔ `1.275 CZP` │ *Paquete Sobreviviente*\n"
+        "💵 **R$ 59,90** ➔ `2.575 CZP` │ *Paquete Raider*\n"
+        "💵 **R$ 124,90** ➔ `4.750 CZP` │ *Paquete Warlord*\n"
+        "💵 **R$ 174,90** ➔ `6.425 CZP` │ 🔥 *+775 CZP bono*\n"
+        "💵 **R$ 349,90** ➔ `12.850 CZP` │ 💎 **+2150 CZP bono**"
     )
 
     embed.add_field(
@@ -1433,7 +1437,7 @@ class CZPPackageSelectES(ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(label="Gratis - Saldo Inicial", description="400 CZP • disponible cada 365 días", value="starter"),
-            discord.SelectOption(label="R$ 9,90 • 400 CZP", description="Paquete Inicial", value="p1"),
+            discord.SelectOption(label="R$ 10,90 • 400 CZP", description="Paquete Inicial", value="p1"),
             discord.SelectOption(label="R$ 34,90 • 1.275 CZP", description="Paquete Sobreviviente", value="p2"),
             discord.SelectOption(label="R$ 59,90 • 2.575 CZP", description="Paquete Raider", value="p3"),
             discord.SelectOption(label="R$ 124,90 • 4.750 CZP", description="Paquete Warlord", value="p4"),
