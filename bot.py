@@ -1,7 +1,12 @@
 import json
 import os
+import asyncio
+import tempfile
+import shutil
+import threading
 from datetime import datetime, timedelta
 
+import aiohttp
 import discord
 from discord.ext import commands
 from discord import ui
@@ -14,6 +19,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(script_dir, ".env"))
 
 TOKEN = os.getenv("BOT_TOKEN")
+BACKUP_WEBHOOK_URL = os.getenv("BACKUP_WEBHOOK_URL", "").strip()
+BACKUP_CHANNEL_ID = os.getenv("BACKUP_CHANNEL_ID", "").strip()
 
 # COLOQUE AQUI O ID DO CANAL "Pedidos VIP"
 ADMIN_CHANNEL_ID = 1487729614976712704
@@ -38,55 +45,240 @@ ORDERS_FILE = os.path.join(script_dir, "orders.json")
 PIX_CODE = """00020126580014br.gov.bcb.pix013696f850dd-18da-4a87-a008-51e6a9f1e1c95204000053039865802BR5919YGOR ATTILA DE LIMA6009Sao Paulo62290525REC69D91E76AB4C03429651466304A923"""
 PIX_QR_FILE = os.path.join(script_dir, "pix_qr.png")
 
-def load_data():
+DATA_LOCK = threading.RLock()
+BACKUP_PREFIX = "CZP_AUTO_BACKUP"
+BACKUP_COOLDOWN_SECONDS = 3
+_last_backup_time = {}
+
+def _backup_path(file_path: str) -> str:
+    return file_path + ".bak"
+
+def _load_json_file(file_path: str, default=None, label="arquivo"):
+    if default is None:
+        default = {}
+
+    with DATA_LOCK:
+        try:
+            if not os.path.exists(file_path):
+                return default
+
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if not content:
+                    return default
+                return json.loads(content)
+
+        except json.JSONDecodeError as e:
+            print(f"⚠️ {label} corrompido: {e}")
+
+            bak = _backup_path(file_path)
+            if os.path.exists(bak):
+                try:
+                    with open(bak, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                except Exception as backup_error:
+                    print(f"⚠️ Backup local também falhou: {backup_error}")
+
+            return None
+
+        except (PermissionError, IOError) as e:
+            print(f"⚠️ Erro ao ler {label}: {e}")
+            return None
+
+def _atomic_save_json_file(file_path: str, data, label="arquivo", backup_to_discord=True):
+    if data is None:
+        return False
+
+    with DATA_LOCK:
+        try:
+            folder = os.path.dirname(file_path)
+            os.makedirs(folder, exist_ok=True)
+
+            # Mantém uma cópia .bak antes de sobrescrever.
+            if os.path.exists(file_path):
+                try:
+                    shutil.copy2(file_path, _backup_path(file_path))
+                except Exception as backup_error:
+                    print(f"⚠️ Não consegui criar backup local de {label}: {backup_error}")
+
+            fd, temp_path = tempfile.mkstemp(prefix=".tmp_", suffix=".json", dir=folder)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+
+                os.replace(temp_path, file_path)
+
+            finally:
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except Exception:
+                        pass
+
+            if backup_to_discord:
+                _schedule_discord_backup(file_path, label)
+
+            return True
+
+        except Exception as e:
+            print(f"⚠️ Erro ao salvar {label}: {e}")
+            return False
+
+def _schedule_discord_backup(file_path: str, label: str):
+    # Backup externo simples: envia o JSON para o canal ADM.
+    # Isso protege contra reset de arquivos no Railway depois de update/redeploy.
     try:
-        if not os.path.exists(DATA_FILE):
-            return {}
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            if not content:
-                return {}
-            return json.loads(content)
-    except (json.JSONDecodeError, PermissionError, IOError) as e:
-        print(f"⚠️ Erro ao ler coins.json (Evitando reset de dados): {e}")
+        if not bot.is_ready():
+            return
+
+        now = datetime.now().timestamp()
+        last = _last_backup_time.get(file_path, 0)
+
+        # Evita flood se vários usuários clicarem ao mesmo tempo.
+        if now - last < BACKUP_COOLDOWN_SECONDS:
+            return
+
+        _last_backup_time[file_path] = now
+        bot.loop.create_task(_send_discord_backup(file_path, label))
+
+    except Exception as e:
+        print(f"⚠️ Não consegui agendar backup Discord para {label}: {e}")
+
+async def _get_backup_channel_id_from_webhook():
+    # A webhook URL não mostra o ID do canal na tela, então o bot descobre sozinho.
+    if BACKUP_CHANNEL_ID:
+        try:
+            return int(BACKUP_CHANNEL_ID)
+        except ValueError:
+            print("⚠️ BACKUP_CHANNEL_ID inválido. Ignorando.")
+
+    if not BACKUP_WEBHOOK_URL:
+        return ADMIN_CHANNEL_ID
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(BACKUP_WEBHOOK_URL) as response:
+                if response.status != 200:
+                    print(f"⚠️ Não consegui ler webhook para descobrir canal. Status: {response.status}")
+                    return None
+                webhook_info = await response.json()
+                channel_id = webhook_info.get("channel_id")
+                return int(channel_id) if channel_id else None
+    except Exception as e:
+        print(f"⚠️ Erro descobrindo canal da webhook: {e}")
         return None
 
+async def _send_discord_backup(file_path: str, label: str):
+    try:
+        if not os.path.exists(file_path):
+            return
+
+        filename = os.path.basename(file_path)
+        stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        content = f"{BACKUP_PREFIX} `{filename}` `{stamp}`"
+
+        # Preferência: manda backup para a webhook do canal privado de backup.
+        if BACKUP_WEBHOOK_URL:
+            form = aiohttp.FormData()
+            form.add_field("payload_json", json.dumps({"content": content}))
+            form.add_field(
+                "file",
+                open(file_path, "rb"),
+                filename=filename,
+                content_type="application/json"
+            )
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(BACKUP_WEBHOOK_URL, data=form) as response:
+                    if response.status not in (200, 204):
+                        text = await response.text()
+                        print(f"⚠️ Webhook backup falhou. Status {response.status}: {text}")
+            return
+
+        # Fallback: se não tiver webhook configurada, usa o canal antigo de Pedidos VIP.
+        channel = bot.get_channel(ADMIN_CHANNEL_ID)
+        if channel is None:
+            channel = await bot.fetch_channel(ADMIN_CHANNEL_ID)
+
+        await channel.send(
+            content=content,
+            file=discord.File(file_path, filename=filename)
+        )
+
+    except Exception as e:
+        print(f"⚠️ Backup Discord falhou para {label}: {e}")
+
+async def restore_latest_discord_backups():
+    # Quando o bot liga, ele procura o último backup no canal de backup.
+    # Se achar, restaura os arquivos antes da loja funcionar.
+    backup_channel_id = await _get_backup_channel_id_from_webhook()
+    if not backup_channel_id:
+        print("⚠️ Nenhum canal de backup encontrado para restore.")
+        return
+
+    channel = bot.get_channel(backup_channel_id)
+    if channel is None:
+        try:
+            channel = await bot.fetch_channel(backup_channel_id)
+        except Exception as e:
+            print(f"⚠️ Não consegui acessar canal de backup para restore: {e}")
+            return
+
+    files_to_restore = {
+        "coins.json": DATA_FILE,
+        "starter_claims.json": STARTER_FILE,
+        "orders.json": ORDERS_FILE,
+    }
+
+    restored = set()
+
+    try:
+        async for message in channel.history(limit=100):
+            if message.author.id != bot.user.id:
+                continue
+
+            if not message.content.startswith(BACKUP_PREFIX):
+                continue
+
+            for attachment in message.attachments:
+                if attachment.filename in files_to_restore and attachment.filename not in restored:
+                    data_bytes = await attachment.read()
+                    json.loads(data_bytes.decode("utf-8"))  # valida antes de salvar
+
+                    target_path = files_to_restore[attachment.filename]
+                    with open(target_path, "wb") as f:
+                        f.write(data_bytes)
+
+                    restored.add(attachment.filename)
+                    print(f"✅ Backup restaurado do Discord: {attachment.filename}")
+
+            if len(restored) == len(files_to_restore):
+                break
+
+    except Exception as e:
+        print(f"⚠️ Restore Discord falhou: {e}")
+
+def load_data():
+    return _load_json_file(DATA_FILE, {}, "coins.json")
 
 def save_data(data):
-    if data is None:
-        return
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-
+    return _atomic_save_json_file(DATA_FILE, data, "coins.json")
 
 def load_starter_claims():
-    try:
-        with open(STARTER_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError:
-        return {}
-
+    result = _load_json_file(STARTER_FILE, {}, "starter_claims.json")
+    return result if result is not None else {}
 
 def save_starter_claims(data):
-    with open(STARTER_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-
+    return _atomic_save_json_file(STARTER_FILE, data, "starter_claims.json")
 
 def load_orders():
-    try:
-        with open(ORDERS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError:
-        return {}
-
+    result = _load_json_file(ORDERS_FILE, {}, "orders.json")
+    return result if result is not None else {}
 
 def save_orders(data):
-    with open(ORDERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    return _atomic_save_json_file(ORDERS_FILE, data, "orders.json")
 
 
 # =========================
@@ -1448,6 +1640,7 @@ class MainShopView(ui.View):
 # =========================
 @bot.event
 async def on_ready():
+    await restore_latest_discord_backups()
     bot.add_view(MainShopView())
     print(f"✅ Bot online como {bot.user}")
 
