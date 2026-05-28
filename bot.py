@@ -195,6 +195,81 @@ CZP_PACKAGES = {
 
 
 # =========================
+# TRADUÇÃO ESPANHOL
+# =========================
+CATEGORY_ES = {
+    "🧱 Construção & Kits de Base": "🧱 Construcción y Kits de Base",
+    "📦 Armazenamento": "📦 Almacenamiento",
+    "🏎️ Veículos Mod": "🏎️ Vehículos Mod",
+    "🔧 Peças & Utilitários de Carro": "🔧 Piezas y Utilidades de Auto",
+    "🎒 Equipamentos & Sobrevivência": "🎒 Equipamiento y Supervivencia",
+    "🪖 MMG Gear": "🪖 Equipo MMG",
+    "⚡ VIP & Serviços": "⚡ VIP y Servicios"
+}
+
+ITEM_ES = {
+    "Caixa de Pregos": "Caja de Clavos",
+    "Pacote de Tábuas (30)": "Paquete de Tablas (30)",
+    "Serrote": "Serrucho",
+    "CodeLock": "CodeLock",
+    "Bandeira": "Bandera",
+    "Kit Bandeira": "Kit de Bandera",
+    "Chapa de Metal (10)": "Chapa de Metal (10)",
+    "Bica de Água": "Tanque de Agua",
+    "Kit Base Básico": "Kit de Base Básico",
+    "Kit Base Completo": "Kit de Base Completo",
+    "Container Pequeno": "Contenedor Pequeño",
+    "Container Médio": "Contenedor Mediano",
+    "Armário Militar Grande": "Armario Militar Grande",
+    "Mod Car 4x4": "Auto Mod 4x4",
+    "Mod Car Sedan": "Auto Mod Sedán",
+    "Chave de Carro": "Llave de Auto",
+    "Lock Pick de Carro": "Ganzúa de Auto",
+    "Bateria de Carro": "Batería de Auto",
+    "Radiador de Carro": "Radiador de Auto",
+    "Vela de Ignição de Carro": "Bujía de Auto",
+    "Roda de Carro": "Rueda de Auto",
+    "Galão de Gasolina": "Bidón de Gasolina",
+    "Machadinha": "Hacha Pequeña",
+    "Pedra de Amolar": "Piedra de Afilar",
+    "Kit Inicial": "Kit Inicial",
+    "Mochila MMG 120": "Mochila MMG 120",
+    "Kit NBC Completo": "Kit NBC Completo",
+    "Massa Epóxi": "Masilla Epoxi",
+    "Nightvision": "Visión Nocturna",
+    "Set Militar MMG Alpine": "Set Militar MMG Alpine",
+    "Status VIP 30 dias": "Estado VIP 30 días",
+    "Prioridade na Fila - 30 Dias": "Prioridad en la Fila - 30 Días"
+}
+
+PACKAGE_ES = {
+    "Grátis - Saldo Inicial": "Gratis - Saldo Inicial",
+    "Starter Pack": "Paquete Inicial",
+    "Standard Rate": "Tarifa Estándar",
+    "5% Bonus Included": "5% de Bono Incluido",
+    "10% Bonus Included": "10% de Bono Incluido",
+    "20% Bonus (Best Value)": "20% de Bono (Mejor Oferta)",
+    "Disponível a cada 365 dias": "Disponible cada 365 días",
+    "Taxa padrão": "Tarifa estándar",
+    "5% de bônus incluso": "5% de bono incluido",
+    "10% de bônus incluso": "10% de bono incluido",
+    "20% de bônus - Melhor custo benefício": "20% de bono - Mejor costo-beneficio"
+}
+
+
+def es_item_name(name: str) -> str:
+    return ITEM_ES.get(name, name)
+
+
+def es_category_name(name: str) -> str:
+    return CATEGORY_ES.get(name, name)
+
+
+def es_package_text(text: str) -> str:
+    return PACKAGE_ES.get(text, text)
+
+
+# =========================
 # FUNÇÕES AUXILIARES
 # =========================
 def get_balance(user_id: int) -> int:
@@ -882,6 +957,435 @@ class CZPPackageView(ui.View):
         self.add_item(CZPPackageSelect())
 
 
+
+# =========================
+# EMBEDS E VIEWS EM ESPANHOL
+# =========================
+def build_shop_embed_es():
+    embed = discord.Embed(
+        title="🏪 CARNAGE Z - MERCADO CZP",
+        description=(
+            "¡Bienvenido al mercado oficial del servidor! 🛍️\n"
+            "Usa los botones interactivos de abajo para comprar o consultar datos.\n\n"
+            "**━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+        ),
+        color=0x00FF88
+    )
+
+    for category_name, items in SHOP_CATEGORIES.items():
+        value = ""
+        for item_id, item in items.items():
+            value += f"`ID {str(item_id).zfill(2)}` 🔹 **{es_item_name(item['name'])}** ➔ `{item['czp']} CZP`\n"
+
+        embed.add_field(
+            name=f"\n{es_category_name(category_name)}",
+            value=value + "**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
+            inline=False
+        )
+
+    embed.set_footer(text="Sistema de Tienda Carnage Z • Desarrollado con cariño")
+    return embed
+
+
+def build_czp_packages_embed_es():
+    embed = discord.Embed(
+        title="💳 ADQUIRIR MONEDAS CZP",
+        description=(
+            "¡Fortalece tu aventura y ayuda a mantener el servidor online!\n"
+            "Elige uno de los paquetes usando el menú de selección.\n\n"
+            "**━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+        ),
+        color=0xFFD700
+    )
+
+    embed.add_field(
+        name="🎁 Beneficio Gratuito",
+        value="`Gratis` ➔ **Saldo Inicial**\n💰 **+1500 CZP**\n⏱️ *Disponible 1 vez cada 365 días.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
+        inline=False
+    )
+
+    paid_value = (
+        "💵 **R$ 5,00** ➔ `500 CZP` │ *Paquete Inicial*\n"
+        "💵 **R$ 10,00** ➔ `1.000 CZP` │ *Tarifa Estándar*\n"
+        "💵 **R$ 20,00** ➔ `2.100 CZP` │ 🔥 *5% de Bono incluido*\n"
+        "💵 **R$ 50,00** ➔ `5.500 CZP` │ 🔥 *10% de Bono incluido*\n"
+        "💵 **R$ 100,00** ➔ `12.000 CZP` │ 💎 **20% de Bono (¡Mejor Oferta!)**"
+    )
+
+    embed.add_field(
+        name="💰 Paquetes Disponibles (PIX)",
+        value=paid_value,
+        inline=False
+    )
+
+    embed.set_footer(text="Carnage Z CZP Store")
+    return embed
+
+
+class PurchaseModalES(ui.Modal, title="Finalizar Compra"):
+    def __init__(self, selected_item_id: int):
+        super().__init__()
+        self.selected_item_id = selected_item_id
+
+        self.nickname = ui.TextInput(
+            label="Nickname en el juego",
+            placeholder="Escribe tu nickname en el servidor",
+            min_length=2,
+            max_length=32
+        )
+
+        self.item_id_input = ui.TextInput(
+            label="ID del Ítem",
+            placeholder=f"Confirma el ID del ítem ({selected_item_id})",
+            min_length=1,
+            max_length=3
+        )
+
+        self.quantity = ui.TextInput(
+            label="Cantidad",
+            placeholder="Ej: 1",
+            default="1",
+            min_length=1,
+            max_length=3
+        )
+
+        self.add_item(self.nickname)
+        self.add_item(self.item_id_input)
+        self.add_item(self.quantity)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            typed_item_id = int(self.item_id_input.value.strip())
+            quantity = int(self.quantity.value.strip())
+        except ValueError:
+            await interaction.followup.send("❌ El ID del ítem y la cantidad deben ser números.", ephemeral=True)
+            return
+
+        if quantity <= 0:
+            await interaction.followup.send("❌ La cantidad debe ser mayor que 0.", ephemeral=True)
+            return
+
+        if typed_item_id != self.selected_item_id:
+            await interaction.followup.send(
+                f"❌ El ID escrito no corresponde al ítem elegido. Seleccionaste el ítem **{self.selected_item_id}**.",
+                ephemeral=True
+            )
+            return
+
+        item = SHOP_ITEMS.get(typed_item_id)
+        if not item:
+            await interaction.followup.send("❌ Ítem inválido.", ephemeral=True)
+            return
+
+        total_price = item["czp"] * quantity
+        current_balance = get_balance(interaction.user.id)
+
+        if current_balance < total_price:
+            await interaction.followup.send(
+                f"❌ Saldo insuficiente.\n"
+                f"Tu saldo actual: **{current_balance} CZP**\n"
+                f"Total de la compra: **{total_price} CZP**",
+                ephemeral=True
+            )
+            return
+
+        success = remove_balance(interaction.user.id, total_price)
+        if not success:
+            await interaction.followup.send("❌ No fue posible descontar el saldo. Inténtalo de nuevo.", ephemeral=True)
+            return
+
+        new_balance = get_balance(interaction.user.id)
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+        buyer_embed = discord.Embed(
+            title="🧾 Recibo de Compra - CZP Store",
+            color=0x00FF88,
+            timestamp=datetime.now()
+        )
+        buyer_embed.add_field(name="Comprador", value=interaction.user.mention, inline=False)
+        buyer_embed.add_field(name="Nickname en el juego", value=self.nickname.value, inline=False)
+        buyer_embed.add_field(name="Ítem", value=es_item_name(item["name"]), inline=False)
+        buyer_embed.add_field(name="ID del Ítem", value=str(typed_item_id), inline=True)
+        buyer_embed.add_field(name="Cantidad", value=str(quantity), inline=True)
+        buyer_embed.add_field(name="Total", value=f"{total_price} CZP", inline=True)
+        buyer_embed.add_field(name="Saldo restante", value=f"{new_balance} CZP", inline=False)
+        buyer_embed.set_footer(text=f"Pedido realizado el {timestamp}")
+
+        dm_sent = await send_dm_safe(interaction.user, buyer_embed)
+
+        admin_embed = discord.Embed(
+            title="📦 Nuevo Pedido VIP",
+            color=0xFFD700,
+            timestamp=datetime.now()
+        )
+        admin_embed.add_field(name="Usuario", value=f"{interaction.user} ({interaction.user.id})", inline=False)
+        admin_embed.add_field(name="Nickname in-game", value=self.nickname.value, inline=False)
+        admin_embed.add_field(name="Item", value=item["name"], inline=False)
+        admin_embed.add_field(name="ID do Item", value=str(typed_item_id), inline=True)
+        admin_embed.add_field(name="Quantidade", value=str(quantity), inline=True)
+        admin_embed.add_field(name="Total pago", value=f"{total_price} CZP", inline=True)
+        admin_embed.add_field(name="Saldo restante do usuário", value=f"{new_balance} CZP", inline=False)
+
+        admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+        if admin_channel:
+            await admin_channel.send(embed=admin_embed)
+
+        msg = (
+            f"✅ Compra registrada con éxito.\n"
+            f"Ítem: **{es_item_name(item['name'])}**\n"
+            f"Cantidad: **{quantity}**\n"
+            f"Total: **{total_price} CZP**\n"
+            f"Saldo restante: **{new_balance} CZP**"
+        )
+
+        if dm_sent:
+            msg += "\n📩 Se envió un recibo a tu DM."
+        else:
+            msg += "\n⚠️ No pude enviar DM. Verifica si tus mensajes privados están abiertos."
+
+        await interaction.followup.send(msg, ephemeral=True)
+
+
+class CategorySelectES(ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(
+                label=es_category_name(category_name),
+                description=f"Ver ítems de {es_category_name(category_name)}",
+                value=category_name
+            )
+            for category_name in SHOP_CATEGORIES.keys()
+        ]
+
+        super().__init__(
+            placeholder="Selecciona una categoría primero...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_category = self.values[0]
+
+        await interaction.response.send_message(
+            f"📂 Categoría seleccionada: **{es_category_name(selected_category)}**\nElige el ítem de abajo para finalizar el canje/compra:",
+            view=ItemSelectViewES(selected_category),
+            ephemeral=True
+        )
+
+
+class ItemSelectES(ui.Select):
+    def __init__(self, category_name: str):
+        items = SHOP_CATEGORIES[category_name]
+
+        options = [
+            discord.SelectOption(
+                label=f"ID {str(item_id).zfill(2)} - {es_item_name(item['name'])}",
+                description=f"Costo: {item['czp']} CZP",
+                value=str(item_id)
+            )
+            for item_id, item in items.items()
+        ]
+
+        super().__init__(
+            placeholder="Selecciona el ítem deseado...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_item_id = int(self.values[0])
+        await interaction.response.send_modal(PurchaseModalES(selected_item_id))
+
+
+class ItemSelectViewES(ui.View):
+    def __init__(self, category_name: str):
+        super().__init__(timeout=120)
+        self.add_item(ItemSelectES(category_name))
+
+
+class BuySelectViewES(ui.View):
+    def __init__(self):
+        super().__init__(timeout=120)
+        self.add_item(CategorySelectES())
+
+
+class CZPPackageSelectES(ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Gratis - Saldo Inicial", description="1500 CZP • disponible cada 365 días", value="starter"),
+            discord.SelectOption(label="R$ 5,00 • 500 CZP", description="Paquete Inicial", value="p1"),
+            discord.SelectOption(label="R$ 10,00 • 1.000 CZP", description="Precio Base", value="p2"),
+            discord.SelectOption(label="R$ 20,00 • 2.100 CZP", description="5% de bono incluido", value="p3"),
+            discord.SelectOption(label="R$ 50,00 • 5.500 CZP", description="+10% de Bono", value="p4"),
+            discord.SelectOption(label="R$ 100,00 • 12.000 CZP", description="+20% de Bono (Más Ventajoso)", value="p5"),
+        ]
+
+        super().__init__(placeholder="Selecciona un paquete de CZP...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_package_id = self.values[0]
+        package = CZP_PACKAGES[selected_package_id]
+
+        if selected_package_id == "starter":
+            claims = load_starter_claims()
+            uid = str(interaction.user.id)
+            now = datetime.now()
+
+            if uid in claims:
+                last_claim = datetime.fromisoformat(claims[uid])
+                cooldown = timedelta(days=365)
+
+                if now - last_claim < cooldown:
+                    remaining = cooldown - (now - last_claim)
+                    days = remaining.days
+                    hours = remaining.seconds // 3600
+                    await interaction.response.send_message(
+                        f"❌ Ya canjeaste tu saldo inicial.\nInténtalo de nuevo en **{days} días y {hours} horas**.",
+                        ephemeral=True
+                    )
+                    return
+
+            add_balance(interaction.user.id, package["czp"])
+            claims[uid] = now.isoformat()
+            save_starter_claims(claims)
+            new_balance = get_balance(interaction.user.id)
+
+            free_embed = discord.Embed(
+                title="🎁 Recibo de Canje CZP",
+                description="Tu saldo inicial fue liberado con éxito.",
+                color=0x2ECC71,
+                timestamp=datetime.now()
+            )
+            free_embed.add_field(name="Paquete", value=f"{es_package_text(package['name'])} - {package['czp']} CZP", inline=False)
+            free_embed.add_field(name="Saldo actual", value=f"{new_balance} CZP", inline=False)
+            free_embed.set_footer(text="Carnage Z CZP")
+            await send_dm_safe(interaction.user, free_embed)
+
+            admin_embed = discord.Embed(title="🎁 Resgate de CZP Grátis", color=0x2ECC71, timestamp=datetime.now())
+            admin_embed.add_field(name="Usuário", value=f"{interaction.user} ({interaction.user.id})", inline=False)
+            admin_embed.add_field(name="Pacote", value=f"{package['name']} - {package['czp']} CZP", inline=False)
+            admin_embed.add_field(name="Novo saldo", value=f"{new_balance} CZP", inline=False)
+            admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+            if admin_channel:
+                await admin_channel.send(admin_embed)
+
+            await interaction.response.send_message(
+                f"✅ Recibiste **{package['czp']} CZP** gratis.\nTu nuevo saldo es **{new_balance} CZP**.",
+                ephemeral=True
+            )
+            return
+
+        order_id = generate_order_id()
+        orders = load_orders()
+        orders[order_id] = {
+            "order_id": order_id,
+            "user_id": str(interaction.user.id),
+            "user_name": str(interaction.user),
+            "package": package["name"],
+            "price_brl": package["price_brl"],
+            "czp": package["czp"],
+            "bonus": package["bonus"],
+            "status": "Aguardando pagamento",
+            "created_at": datetime.now().isoformat()
+        }
+        save_orders(orders)
+
+        payment_embed = discord.Embed(
+            title="💳 Pago por PIX - CZP",
+            description=(
+                f"**Pedido:** `{order_id}`\n\n"
+                f"Seleccionaste el paquete **{es_package_text(package['name'])}**.\n\n"
+                f"💵 **Valor:** {package['price_brl']}\n"
+                f"💰 **CZP:** {package['czp']} CZP\n"
+                f"✨ **Detalle:** {es_package_text(package['bonus'])}\n\n"
+                f"Haz el pago por PIX usando el QR Code o copia el código de abajo."
+            ),
+            color=0x00C853,
+            timestamp=datetime.now()
+        )
+        payment_embed.add_field(name="📋 Código PIX Copia y Pega", value=f"```{PIX_CODE}```", inline=False)
+        payment_embed.add_field(
+            name="🧾 Instrucciones",
+            value=(
+                "1. Haz el pago del valor exacto\n"
+                "2. Guarda el comprobante\n"
+                "3. Envía el comprobante al equipo/admin por ticket\n"
+                "4. Después de la confirmación, tu saldo CZP será agregado"
+            ),
+            inline=False
+        )
+        payment_embed.set_footer(text="Carnage Z • Pago CZP")
+        dm_sent = await send_dm_with_pix(interaction.user, payment_embed)
+
+        admin_embed = discord.Embed(title="💳 Novo Pedido de CZP", description="Pedido aguardando pagamento/confirmação.", color=0xFFD700, timestamp=datetime.now())
+        admin_embed.add_field(name="Pedido", value=order_id, inline=False)
+        admin_embed.add_field(name="Usuário", value=f"{interaction.user} ({interaction.user.id})", inline=False)
+        admin_embed.add_field(name="Pacote", value=package["name"], inline=False)
+        admin_embed.add_field(name="Valor", value=package["price_brl"], inline=True)
+        admin_embed.add_field(name="CZP", value=f"{package['czp']} CZP", inline=True)
+        admin_embed.add_field(name="Observação", value=package["bonus"], inline=False)
+        admin_embed.add_field(name="Status", value="Aguardando pagamento", inline=False)
+        admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+        if admin_channel:
+            await admin_channel.send(embed=admin_embed, view=AdminCZPOrderView(order_id))
+
+        user_msg = (
+            f"✅ Tu pedido fue creado con éxito.\n"
+            f"**Paquete:** {es_package_text(package['name'])}\n"
+            f"**Valor:** {package['price_brl']}\n"
+            f"**CZP:** {package['czp']} CZP\n\n"
+        )
+        if dm_sent:
+            user_msg += "📩 Te envié el QR Code y el código PIX por DM."
+        else:
+            user_msg += "⚠️ No pude enviar DM.\nAbre tu DM e inténtalo de nuevo, o habla con el equipo."
+
+        await interaction.response.send_message(user_msg, ephemeral=True)
+
+
+class CZPPackageViewES(ui.View):
+    def __init__(self):
+        super().__init__(timeout=120)
+        self.add_item(CZPPackageSelectES())
+
+
+class SpanishShopView(ui.View):
+    def __init__(self):
+        super().__init__(timeout=120)
+
+    @ui.button(label="🛒 Comprar Ítems", style=discord.ButtonStyle.success)
+    async def buy_button_es(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(
+            "Selecciona primero la categoría del ítem:",
+            view=BuySelectViewES(),
+            ephemeral=True
+        )
+
+    @ui.button(label="💰 Ver Mi Saldo", style=discord.ButtonStyle.primary)
+    async def balance_button_es(self, interaction: discord.Interaction, button: ui.Button):
+        balance = get_balance(interaction.user.id)
+        balance_embed = discord.Embed(
+            title="💰 Saldo CZP",
+            description=f"Tu saldo actual es **{balance} CZP**",
+            color=0x3498DB,
+            timestamp=datetime.now()
+        )
+        balance_embed.set_footer(text="Carnage Z Coins")
+        dm_sent = await send_dm_safe(interaction.user, balance_embed)
+
+        if dm_sent:
+            await interaction.response.send_message("📩 Envié tu saldo por DM.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"⚠️ No pude enviarte DM.\nTu saldo actual es **{balance} CZP**", ephemeral=True)
+
+    @ui.button(label="💳 Adquirir Monedas CZP", style=discord.ButtonStyle.primary)
+    async def acquire_czp_button_es(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(embed=build_czp_packages_embed_es(), view=CZPPackageViewES(), ephemeral=True)
+
 # =========================
 # BOTÕES PRINCIPAIS
 # =========================
@@ -927,6 +1431,14 @@ class MainShopView(ui.View):
         await interaction.response.send_message(
             embed=build_czp_packages_embed(),
             view=CZPPackageView(),
+            ephemeral=True
+        )
+
+    @ui.button(label="🇪🇸 Español", style=discord.ButtonStyle.secondary, custom_id="czp_spanish_button")
+    async def spanish_button(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(
+            embed=build_shop_embed_es(),
+            view=SpanishShopView(),
             ephemeral=True
         )
 
