@@ -1,5 +1,7 @@
 import json
 import os
+import sqlite3
+import threading
 from datetime import datetime, timedelta
 
 import discord
@@ -28,78 +30,451 @@ intents.presences = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # =========================
-# BANCO DE DADOS
+# BANCO DE DADOS SEGURO
+# PostgreSQL no Railway / SQLite local
 # =========================
-DATA_FILE = os.path.join(script_dir, "coins.json")
-STARTER_FILE = os.path.join(script_dir, "starter_claims.json")
-ORDERS_FILE = os.path.join(script_dir, "orders.json")
+# IMPORTANTE:
+# - No Railway, crie um PostgreSQL e coloque DATABASE_URL nas Variables.
+# - Se DATABASE_URL existir, o bot usa PostgreSQL.
+# - Se DATABASE_URL não existir, ele usa SQLite local em carnagez_czp.db.
+# - O SQLite local é bom para teste no PC, mas no Railway use PostgreSQL.
+
+DATA_FILE = os.path.join(script_dir, "coins.json")  # arquivo antigo, usado só para migração automática
+STARTER_FILE = os.path.join(script_dir, "starter_claims.json")  # arquivo antigo, usado só para migração automática
+ORDERS_FILE = os.path.join(script_dir, "orders.json")  # arquivo antigo, usado só para migração automática
+SQLITE_FILE = os.path.join(script_dir, "carnagez_czp.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 PIX_CODE = """00020126580014br.gov.bcb.pix013696f850dd-18da-4a87-a008-51e6a9f1e1c95204000053039865802BR5919YGOR ATTILA DE LIMA6009Sao Paulo62290525REC69D91E76AB4C03429651466304A923"""
 PIX_QR_FILE = os.path.join(script_dir, "pix_qr.png")
 
-def _load_json_file(file_path: str, default=None, label="arquivo"):
+DB_LOCK = threading.RLock()
+DB_READY = False
+USE_POSTGRES = bool(DATABASE_URL)
+
+if USE_POSTGRES:
+    try:
+        import psycopg2
+    except ImportError:
+        raise ImportError(
+            "DATABASE_URL foi encontrado, mas psycopg2-binary não está instalado. "
+            "Adicione psycopg2-binary no requirements.txt."
+        )
+
+
+def _db_placeholder():
+    return "%s" if USE_POSTGRES else "?"
+
+
+def _connect_db():
+    if USE_POSTGRES:
+        return psycopg2.connect(DATABASE_URL)
+
+    conn = sqlite3.connect(SQLITE_FILE)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    return conn
+
+
+def _load_legacy_json(file_path: str, default=None):
     if default is None:
         default = {}
-
     try:
         if not os.path.exists(file_path):
             return default
-
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read().strip()
             if not content:
                 return default
-            return json.loads(content)
-
-    except json.JSONDecodeError as e:
-        print(f"⚠️ {label} corrompido: {e}")
-        return default
-
-    except (PermissionError, IOError) as e:
-        print(f"⚠️ Erro ao ler {label}: {e}")
-        return default
-
-
-def _save_json_file(file_path: str, data, label="arquivo"):
-    if data is None:
-        return False
-
-    try:
-        folder = os.path.dirname(file_path)
-        os.makedirs(folder, exist_ok=True)
-
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-
-        return True
-
+            data = json.loads(content)
+            return data if isinstance(data, dict) else default
     except Exception as e:
-        print(f"⚠️ Erro ao salvar {label}: {e}")
-        return False
+        print(f"⚠️ Não consegui migrar {os.path.basename(file_path)}: {e}")
+        return default
+
+
+def init_db():
+    """Cria as tabelas e migra automaticamente os JSON antigos se o banco estiver vazio."""
+    global DB_READY
+
+    with DB_LOCK:
+        if DB_READY:
+            return True
+
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS balances (
+                    user_id TEXT PRIMARY KEY,
+                    balance INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS starter_claims (
+                    user_id TEXT PRIMARY KEY,
+                    claimed_at TEXT NOT NULL
+                )
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS orders (
+                    order_id TEXT PRIMARY KEY,
+                    user_id TEXT,
+                    status TEXT,
+                    created_at TEXT,
+                    data TEXT NOT NULL
+                )
+            """)
+
+            cur.execute("SELECT COUNT(*) FROM balances")
+            balance_count = cur.fetchone()[0]
+
+            if balance_count == 0:
+                old_balances = _load_legacy_json(DATA_FILE, {})
+                if old_balances:
+                    print(f"🔁 Migrando {len(old_balances)} saldos do coins.json para o banco de dados...")
+                    p = _db_placeholder()
+                    for user_id, balance in old_balances.items():
+                        try:
+                            cur.execute(
+                                f"""
+                                INSERT INTO balances (user_id, balance, updated_at)
+                                VALUES ({p}, {p}, {p})
+                                ON CONFLICT(user_id) DO UPDATE SET
+                                    balance = excluded.balance,
+                                    updated_at = excluded.updated_at
+                                """,
+                                (str(user_id), int(balance), datetime.now().isoformat())
+                            )
+                        except Exception as e:
+                            print(f"⚠️ Saldo ignorado na migração: {user_id} -> {balance} | {e}")
+
+            cur.execute("SELECT COUNT(*) FROM starter_claims")
+            starter_count = cur.fetchone()[0]
+
+            if starter_count == 0:
+                old_claims = _load_legacy_json(STARTER_FILE, {})
+                if old_claims:
+                    print(f"🔁 Migrando {len(old_claims)} resgates iniciais para o banco de dados...")
+                    p = _db_placeholder()
+                    for user_id, claimed_at in old_claims.items():
+                        cur.execute(
+                            f"""
+                            INSERT INTO starter_claims (user_id, claimed_at)
+                            VALUES ({p}, {p})
+                            ON CONFLICT(user_id) DO UPDATE SET claimed_at = excluded.claimed_at
+                            """,
+                            (str(user_id), str(claimed_at))
+                        )
+
+            cur.execute("SELECT COUNT(*) FROM orders")
+            orders_count = cur.fetchone()[0]
+
+            if orders_count == 0:
+                old_orders = _load_legacy_json(ORDERS_FILE, {})
+                if old_orders:
+                    print(f"🔁 Migrando {len(old_orders)} pedidos para o banco de dados...")
+                    p = _db_placeholder()
+                    for order_id, order in old_orders.items():
+                        if not isinstance(order, dict):
+                            continue
+                        cur.execute(
+                            f"""
+                            INSERT INTO orders (order_id, user_id, status, created_at, data)
+                            VALUES ({p}, {p}, {p}, {p}, {p})
+                            ON CONFLICT(order_id) DO UPDATE SET
+                                user_id = excluded.user_id,
+                                status = excluded.status,
+                                created_at = excluded.created_at,
+                                data = excluded.data
+                            """,
+                            (
+                                str(order_id),
+                                str(order.get("user_id", "")),
+                                str(order.get("status", "")),
+                                str(order.get("created_at", datetime.now().isoformat())),
+                                json.dumps(order, ensure_ascii=False)
+                            )
+                        )
+
+            conn.commit()
+            cur.close()
+            conn.close()
+            DB_READY = True
+
+            if USE_POSTGRES:
+                print("✅ Banco de dados conectado: PostgreSQL")
+            else:
+                print(f"✅ Banco de dados conectado: SQLite local ({SQLITE_FILE})")
+
+            return True
+
+        except Exception as e:
+            print(f"❌ Erro ao iniciar banco de dados: {e}")
+            return False
 
 
 def load_data():
-    return _load_json_file(DATA_FILE, {}, "coins.json")
+    init_db()
+    with DB_LOCK:
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            cur.execute("SELECT user_id, balance FROM balances")
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            return {str(user_id): int(balance) for user_id, balance in rows}
+        except Exception as e:
+            print(f"⚠️ Erro ao carregar saldos do banco: {e}")
+            return {}
 
 
 def save_data(data):
-    return _save_json_file(DATA_FILE, data, "coins.json")
+    init_db()
+    if data is None:
+        return False
+
+    with DB_LOCK:
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+            now = datetime.now().isoformat()
+
+            for user_id, balance in data.items():
+                cur.execute(
+                    f"""
+                    INSERT INTO balances (user_id, balance, updated_at)
+                    VALUES ({p}, {p}, {p})
+                    ON CONFLICT(user_id) DO UPDATE SET
+                        balance = excluded.balance,
+                        updated_at = excluded.updated_at
+                    """,
+                    (str(user_id), int(balance), now)
+                )
+
+            conn.commit()
+            cur.close()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"⚠️ Erro ao salvar saldos no banco: {e}")
+            return False
+
+
+def get_balance(user_id: int) -> int:
+    init_db()
+    with DB_LOCK:
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+            cur.execute(f"SELECT balance FROM balances WHERE user_id = {p}", (str(user_id),))
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            return int(row[0]) if row else 0
+        except Exception as e:
+            print(f"⚠️ Erro ao consultar saldo de {user_id}: {e}")
+            return 0
+
+
+def add_balance(user_id: int, amount: int) -> bool:
+    init_db()
+    if amount <= 0:
+        return False
+
+    with DB_LOCK:
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+            uid = str(user_id)
+            now = datetime.now().isoformat()
+
+            cur.execute(f"SELECT balance FROM balances WHERE user_id = {p}", (uid,))
+            row = cur.fetchone()
+            current_balance = int(row[0]) if row else 0
+            new_balance = current_balance + int(amount)
+
+            cur.execute(
+                f"""
+                INSERT INTO balances (user_id, balance, updated_at)
+                VALUES ({p}, {p}, {p})
+                ON CONFLICT(user_id) DO UPDATE SET
+                    balance = excluded.balance,
+                    updated_at = excluded.updated_at
+                """,
+                (uid, new_balance, now)
+            )
+
+            conn.commit()
+            cur.close()
+            conn.close()
+            print(f"💰 ADD CZP | user={uid} | antes={current_balance} | add={amount} | depois={new_balance}")
+            return True
+        except Exception as e:
+            print(f"⚠️ Erro ao adicionar saldo para {user_id}: {e}")
+            return False
+
+
+def remove_balance(user_id: int, amount: int) -> bool:
+    init_db()
+    if amount <= 0:
+        return False
+
+    with DB_LOCK:
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+            uid = str(user_id)
+            now = datetime.now().isoformat()
+
+            cur.execute(f"SELECT balance FROM balances WHERE user_id = {p}", (uid,))
+            row = cur.fetchone()
+            current_balance = int(row[0]) if row else 0
+
+            if current_balance < amount:
+                cur.close()
+                conn.close()
+                return False
+
+            new_balance = current_balance - int(amount)
+
+            cur.execute(
+                f"""
+                INSERT INTO balances (user_id, balance, updated_at)
+                VALUES ({p}, {p}, {p})
+                ON CONFLICT(user_id) DO UPDATE SET
+                    balance = excluded.balance,
+                    updated_at = excluded.updated_at
+                """,
+                (uid, new_balance, now)
+            )
+
+            conn.commit()
+            cur.close()
+            conn.close()
+            print(f"💸 REMOVE CZP | user={uid} | antes={current_balance} | remove={amount} | depois={new_balance}")
+            return True
+        except Exception as e:
+            print(f"⚠️ Erro ao remover saldo de {user_id}: {e}")
+            return False
 
 
 def load_starter_claims():
-    return _load_json_file(STARTER_FILE, {}, "starter_claims.json")
+    init_db()
+    with DB_LOCK:
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            cur.execute("SELECT user_id, claimed_at FROM starter_claims")
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            return {str(user_id): str(claimed_at) for user_id, claimed_at in rows}
+        except Exception as e:
+            print(f"⚠️ Erro ao carregar starter_claims do banco: {e}")
+            return {}
 
 
 def save_starter_claims(data):
-    return _save_json_file(STARTER_FILE, data, "starter_claims.json")
+    init_db()
+    if data is None:
+        return False
+
+    with DB_LOCK:
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+            for user_id, claimed_at in data.items():
+                cur.execute(
+                    f"""
+                    INSERT INTO starter_claims (user_id, claimed_at)
+                    VALUES ({p}, {p})
+                    ON CONFLICT(user_id) DO UPDATE SET claimed_at = excluded.claimed_at
+                    """,
+                    (str(user_id), str(claimed_at))
+                )
+            conn.commit()
+            cur.close()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"⚠️ Erro ao salvar starter_claims no banco: {e}")
+            return False
 
 
 def load_orders():
-    return _load_json_file(ORDERS_FILE, {}, "orders.json")
+    init_db()
+    with DB_LOCK:
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            cur.execute("SELECT order_id, data FROM orders")
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+
+            result = {}
+            for order_id, raw_data in rows:
+                try:
+                    result[str(order_id)] = json.loads(raw_data)
+                except Exception:
+                    pass
+            return result
+        except Exception as e:
+            print(f"⚠️ Erro ao carregar pedidos do banco: {e}")
+            return {}
 
 
 def save_orders(data):
-    return _save_json_file(ORDERS_FILE, data, "orders.json")
+    init_db()
+    if data is None:
+        return False
+
+    with DB_LOCK:
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+
+            for order_id, order in data.items():
+                if not isinstance(order, dict):
+                    continue
+                cur.execute(
+                    f"""
+                    INSERT INTO orders (order_id, user_id, status, created_at, data)
+                    VALUES ({p}, {p}, {p}, {p}, {p})
+                    ON CONFLICT(order_id) DO UPDATE SET
+                        user_id = excluded.user_id,
+                        status = excluded.status,
+                        created_at = excluded.created_at,
+                        data = excluded.data
+                    """,
+                    (
+                        str(order_id),
+                        str(order.get("user_id", "")),
+                        str(order.get("status", "")),
+                        str(order.get("created_at", datetime.now().isoformat())),
+                        json.dumps(order, ensure_ascii=False)
+                    )
+                )
+
+            conn.commit()
+            cur.close()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"⚠️ Erro ao salvar pedidos no banco: {e}")
+            return False
 
 
 # =========================
@@ -1484,6 +1859,7 @@ class MainShopView(ui.View):
 # =========================
 @bot.event
 async def on_ready():
+    init_db()
     bot.add_view(MainShopView())
     print(f"✅ Bot online como {bot.user}")
 
