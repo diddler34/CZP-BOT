@@ -22,7 +22,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 BACKUP_WEBHOOK_URL = os.getenv("BACKUP_WEBHOOK_URL", "").strip()
 BACKUP_CHANNEL_ID = os.getenv("BACKUP_CHANNEL_ID", "").strip()
 
-# COLOQUE AQUI O ID DO CANAL "Pedidos VIP"
+# ID DO CANAL "Pedidos VIP"
 ADMIN_CHANNEL_ID = 1487729614976712704
 
 if not TOKEN:
@@ -94,7 +94,6 @@ def _atomic_save_json_file(file_path: str, data, label="arquivo", backup_to_disc
             folder = os.path.dirname(file_path)
             os.makedirs(folder, exist_ok=True)
 
-            # Mantém uma cópia .bak antes de sobrescrever.
             if os.path.exists(file_path):
                 try:
                     shutil.copy2(file_path, _backup_path(file_path))
@@ -127,20 +126,13 @@ def _atomic_save_json_file(file_path: str, data, label="arquivo", backup_to_disc
             return False
 
 def _schedule_discord_backup(file_path: str, label: str):
-    # Backup externo simples: envia o JSON SOMENTE para um canal/webhook de backup configurado.
-    # IMPORTANTE: se BACKUP_WEBHOOK_URL ou BACKUP_CHANNEL_ID não estiverem configurados,
-    # o bot NÃO manda backup no canal de Pedidos VIP.
     try:
-        if not BACKUP_WEBHOOK_URL and not BACKUP_CHANNEL_ID:
-            return
-
         if not bot.is_ready():
             return
 
         now = datetime.now().timestamp()
         last = _last_backup_time.get(file_path, 0)
 
-        # Evita flood se vários usuários clicarem ao mesmo tempo.
         if now - last < BACKUP_COOLDOWN_SECONDS:
             return
 
@@ -151,7 +143,6 @@ def _schedule_discord_backup(file_path: str, label: str):
         print(f"⚠️ Não consegui agendar backup Discord para {label}: {e}")
 
 async def _get_backup_channel_id_from_webhook():
-    # A webhook URL não mostra o ID do canal na tela, então o bot descobre sozinho.
     if BACKUP_CHANNEL_ID:
         try:
             return int(BACKUP_CHANNEL_ID)
@@ -183,7 +174,7 @@ async def _send_discord_backup(file_path: str, label: str):
         stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         content = f"{BACKUP_PREFIX} `{filename}` `{stamp}`"
 
-        # Preferência: manda backup para a webhook do canal privado de backup.
+        # Envia apenas se houver Webhook dedicada configurada.
         if BACKUP_WEBHOOK_URL:
             form = aiohttp.FormData()
             form.add_field("payload_json", json.dumps({"content": content}))
@@ -200,30 +191,16 @@ async def _send_discord_backup(file_path: str, label: str):
                         text = await response.text()
                         print(f"⚠️ Webhook backup falhou. Status {response.status}: {text}")
             return
-
-        # Fallback seguro: usa BACKUP_CHANNEL_ID somente se você configurar um canal separado de backup.
-        # Nunca usa o canal de Pedidos VIP para não poluir a página de pedidos.
-        if not BACKUP_CHANNEL_ID:
-            return
-
-        channel = bot.get_channel(int(BACKUP_CHANNEL_ID))
-        if channel is None:
-            channel = await bot.fetch_channel(int(BACKUP_CHANNEL_ID))
-
-        await channel.send(
-            content=content,
-            file=discord.File(file_path, filename=filename)
-        )
+            
+        # O Fallback para o canal ADMIN_CHANNEL_ID foi removido para evitar flood na página de Pedidos.
 
     except Exception as e:
         print(f"⚠️ Backup Discord falhou para {label}: {e}")
 
 async def restore_latest_discord_backups():
-    # Quando o bot liga, ele procura o último backup no canal de backup.
-    # Se achar, restaura os arquivos antes da loja funcionar.
     backup_channel_id = await _get_backup_channel_id_from_webhook()
     if not backup_channel_id:
-        print("⚠️ Nenhum canal de backup encontrado para restore.")
+        print("⚠️ Nenhum canal de backup dedicado encontrado para restore.")
         return
 
     channel = bot.get_channel(backup_channel_id)
@@ -253,7 +230,7 @@ async def restore_latest_discord_backups():
             for attachment in message.attachments:
                 if attachment.filename in files_to_restore and attachment.filename not in restored:
                     data_bytes = await attachment.read()
-                    json.loads(data_bytes.decode("utf-8"))  # valida antes de salvar
+                    json.loads(data_bytes.decode("utf-8"))
 
                     target_path = files_to_restore[attachment.filename]
                     with open(target_path, "wb") as f:
@@ -290,65 +267,66 @@ def save_orders(data):
 
 
 # =========================
-# ITENS DA LOJA
+# ITENS DA LOJA (PREÇOS EQUILIBRADOS)
 # =========================
 SHOP_CATEGORIES = {
     "🧱 Construção & Kits de Base": {
-        1: {"name": "Caixa de Pregos", "czp": 350},
-        2: {"name": "Pacote de Tábuas (30)", "czp": 450},
-        3: {"name": "Serrote", "czp": 250},
-        4: {"name": "CodeLock", "czp": 900},
-        5: {"name": "Bandeira", "czp": 600},
-        6: {"name": "Kit Bandeira", "czp": 1200},
-        7: {"name": "Chapa de Metal (10)", "czp": 1600},
-        8: {"name": "Bica de Água", "czp": 1800},
-        9: {"name": "Arame Farpado", "czp": 400},
-        10: {"name": "Kit Arame Farpado", "czp": 1000},
-        11: {"name": "Kit Base Básico", "czp": 2200},
-        12: {"name": "Kit Base Completo", "czp": 5200}
+        1: {"name": "Caixa de Pregos", "czp": 50},
+        2: {"name": "Pacote de Tábuas (30)", "czp": 100},
+        3: {"name": "Serrote", "czp": 40},
+        4: {"name": "CodeLock", "czp": 250},
+        5: {"name": "Bandeira", "czp": 150},
+        6: {"name": "Kit Bandeira", "czp": 350},
+        7: {"name": "Chapa de Metal (10)", "czp": 300},
+        8: {"name": "Bica de Água", "czp": 500},
+        9: {"name": "Arame Farpado", "czp": 80},
+        10: {"name": "Kit Arame Farpado", "czp": 250},
+        11: {"name": "Kit Base Básico", "czp": 600},
+        12: {"name": "Kit Base Completo", "czp": 1500}
     },
 
     "📦 Armazenamento": {
-        13: {"name": "Container Pequeno", "czp": 600},
-        14: {"name": "Container Médio", "czp": 1000},
-        15: {"name": "Armário Militar Grande", "czp": 1800}
+        13: {"name": "Container Pequeno", "czp": 150},
+        14: {"name": "Container Médio", "czp": 300},
+        15: {"name": "Armário Militar Grande", "czp": 500}
     },
 
     "🏎️ Veículos Mod": {
-        16: {"name": "Mod Car 4x4", "czp": 3000},
-        17: {"name": "Mod Car Sedan", "czp": 3000}
+        16: {"name": "Mod Car 4x4", "czp": 1275},  # R$ 30,00 Equivalente
+        17: {"name": "Mod Car Sedan", "czp": 1275} # R$ 30,00 Equivalente
     },
 
     "🔧 Peças & Utilitários de Carro": {
-        18: {"name": "Chave de Carro", "czp": 900},
-        19: {"name": "Lock Pick de Carro", "czp": 1500},
-        20: {"name": "Bateria de Carro", "czp": 450},
-        21: {"name": "Radiador de Carro", "czp": 450},
-        22: {"name": "Vela de Ignição de Carro", "czp": 350},
-        23: {"name": "Roda de Carro", "czp": 500},
-        24: {"name": "Galão de Gasolina", "czp": 350}
+        18: {"name": "Chave de Carro", "czp": 200},
+        19: {"name": "Lock Pick de Carro", "czp": 150},
+        20: {"name": "Bateria de Carro", "czp": 80},
+        21: {"name": "Radiador de Carro", "czp": 80},
+        22: {"name": "Vela de Ignição de Carro", "czp": 50},
+        23: {"name": "Roda de Carro", "czp": 100},
+        24: {"name": "Galão de Gasolina", "czp": 60}
     },
 
     "🎒 Equipamentos & Sobrevivência": {
-        25: {"name": "Machadinha", "czp": 300},
-        26: {"name": "Pedra de Amolar", "czp": 300},
-        27: {"name": "Kit Inicial", "czp": 700},
-        28: {"name": "Mochila MMG 120", "czp": 1400},
-        29: {"name": "Kit NBC Completo", "czp": 1800},
-        30: {"name": "Massa Epóxi", "czp": 350},
-        31: {"name": "Nightvision", "czp": 2400}
+        25: {"name": "Machadinha", "czp": 40},
+        26: {"name": "Pedra de Amolar", "czp": 60},
+        27: {"name": "Kit Inicial", "czp": 120},
+        28: {"name": "Mochila MMG 120", "czp": 350},
+        29: {"name": "Kit NBC Completo", "czp": 450},
+        30: {"name": "Massa Epóxi", "czp": 70},
+        31: {"name": "Nightvision", "czp": 600}
     },
 
     "🪖 MMG Gear": {
-        32: {"name": "Set Militar MMG Alpine", "czp": 2200}
+        32: {"name": "Set Militar MMG Alpine", "czp": 800}
     },
 
     "⚡ VIP & Serviços": {
-        33: {"name": "Status VIP 30 dias", "czp": 4900},
-        34: {"name": "Prioridade na Fila - 30 Dias", "czp": 1200},
-        35: {"name": "Seguro de Carro - 30 Dias", "czp": 1500}
+        33: {"name": "Status VIP 30 dias", "czp": 1275},
+        34: {"name": "Prioridade na Fila - 30 Dias", "czp": 600},
+        35: {"name": "Seguro de Carro - 30 Dias", "czp": 640} # R$ 15,00 Equivalente em CZP
     }
 }
+
 SHOP_ITEMS = {}
 for category in SHOP_CATEGORIES.values():
     SHOP_ITEMS.update(category)
@@ -360,46 +338,47 @@ CZP_PACKAGES = {
     "starter": {
         "name": "Grátis - Saldo Inicial",
         "price_brl": "R$ 0,00",
-        "czp": 300,
+        "czp": 400,
         "bonus": "Disponível a cada 365 dias"
     },
     "p1": {
         "name": "Starter Pack",
-        "price_brl": "R$ 10,00",
-        "czp": 1000,
-        "bonus": "Taxa padrão: 100 CZP por R$ 1"
+        "price_brl": "R$ 10,90",
+        "czp": 400,
+        "bonus": "Pacote inicial"
     },
     "p2": {
         "name": "Survivor Pack",
-        "price_brl": "R$ 25,00",
-        "czp": 2600,
-        "bonus": "+100 CZP bônus"
+        "price_brl": "R$ 34,90",
+        "czp": 1275,
+        "bonus": "Pacote sobrevivente"
     },
     "p3": {
         "name": "Raider Pack",
-        "price_brl": "R$ 50,00",
-        "czp": 5500,
-        "bonus": "+500 CZP bônus"
+        "price_brl": "R$ 59,90",
+        "czp": 2575,
+        "bonus": "Pacote raider"
     },
     "p4": {
         "name": "Warlord Pack",
-        "price_brl": "R$ 100,00",
-        "czp": 12000,
-        "bonus": "+2000 CZP bônus"
+        "price_brl": "R$ 124,90",
+        "czp": 4750,
+        "bonus": "Pacote avançado"
     },
     "p5": {
         "name": "Black Market Pack",
-        "price_brl": "R$ 150,00",
-        "czp": 18500,
-        "bonus": "+3500 CZP bônus"
+        "price_brl": "R$ 174,90",
+        "czp": 6425,
+        "bonus": "+775 CZP bônus"
     },
     "p6": {
         "name": "Carnage Elite Pack",
-        "price_brl": "R$ 300,00",
-        "czp": 39000,
-        "bonus": "+9000 CZP bônus"
+        "price_brl": "R$ 349,90",
+        "czp": 12850,
+        "bonus": "+2150 CZP bônus"
     }
 }
+
 
 # =========================
 # TRADUÇÃO ESPANHOL
@@ -474,23 +453,14 @@ PACKAGE_ES = {
     "10% de bônus incluso": "10% de bono incluido",
     "20% de bônus - Melhor custo benefício": "20% de bono - Mejor costo-beneficio",
     "+775 CZP bônus": "+775 CZP bono",
-    "+2150 CZP bônus": "+2150 CZP bono",
-    "Taxa padrão: 100 CZP por R$ 1": "Tarifa estándar: 100 CZP por R$ 1",
-    "+100 CZP bônus": "+100 CZP bono",
-    "+500 CZP bônus": "+500 CZP bono",
-    "+2000 CZP bônus": "+2000 CZP bono",
-    "+3500 CZP bônus": "+3500 CZP bono",
-    "+9000 CZP bônus": "+9000 CZP bono"
+    "+2150 CZP bônus": "+2150 CZP bono"
 }
-
 
 def es_item_name(name: str) -> str:
     return ITEM_ES.get(name, name)
 
-
 def es_category_name(name: str) -> str:
     return CATEGORY_ES.get(name, name)
-
 
 def es_package_text(text: str) -> str:
     return PACKAGE_ES.get(text, text)
@@ -504,7 +474,6 @@ def get_balance(user_id: int) -> int:
     if data is None:
         return 0
     return int(data.get(str(user_id), 0))
-
 
 def remove_balance(user_id: int, amount: int) -> bool:
     data = load_data()
@@ -520,7 +489,6 @@ def remove_balance(user_id: int, amount: int) -> bool:
     save_data(data)
     return True
 
-
 def add_balance(user_id: int, amount: int) -> bool:
     data = load_data()
     if data is None:
@@ -530,7 +498,6 @@ def add_balance(user_id: int, amount: int) -> bool:
     save_data(data)
     return True
 
-
 async def send_dm_safe(user: discord.User | discord.Member, embed: discord.Embed):
     try:
         await user.send(embed=embed)
@@ -539,7 +506,6 @@ async def send_dm_safe(user: discord.User | discord.Member, embed: discord.Embed
         return False
     except discord.HTTPException:
         return False
-
 
 async def send_dm_with_pix(user: discord.User | discord.Member, embed: discord.Embed):
     try:
@@ -555,10 +521,8 @@ async def send_dm_with_pix(user: discord.User | discord.Member, embed: discord.E
     except discord.HTTPException:
         return False
 
-
 def generate_order_id():
     return datetime.now().strftime("CZP%Y%m%d%H%M%S")
-
 
 def build_shop_embed():
     embed = discord.Embed(
@@ -585,7 +549,6 @@ def build_shop_embed():
     embed.set_footer(text="Carnage Z Store System • Desenvolvido com carinho")
     return embed
 
-
 def build_czp_packages_embed():
     embed = discord.Embed(
         title="💳 ADQUIRIR MOEDAS CZP",
@@ -599,17 +562,17 @@ def build_czp_packages_embed():
 
     embed.add_field(
         name="🎁 Benefício Gratuito",
-        value="`Gratuito` ➔ **Saldo Inicial**\n💰 **+300 CZP**\n⏱️ *Disponível 1 vez a cada 365 dias.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
+        value="`Gratuito` ➔ **Saldo Inicial**\n💰 **+400 CZP**\n⏱️ *Disponível 1 vez a cada 365 dias.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
         inline=False
     )
 
     paid_value = (
-        "💵 **R$ 10,00** ➔ `1.000 CZP` │ *Starter Pack*\n"
-        "💵 **R$ 25,00** ➔ `2.600 CZP` │ *Survivor Pack*\n"
-        "💵 **R$ 50,00** ➔ `5.500 CZP` │ *Raider Pack*\n"
-        "💵 **R$ 100,00** ➔ `12.000 CZP` │ *Warlord Pack*\n"
-        "💵 **R$ 150,00** ➔ `18.500 CZP` │ 🔥 *+3.500 CZP bônus*\n"
-        "💵 **R$ 300,00** ➔ `39.000 CZP` │ 💎 **+9.000 CZP bônus**"
+        "💵 **R$ 10,90** ➔ `400 CZP` │ *Starter Pack*\n"
+        "💵 **R$ 34,90** ➔ `1.275 CZP` │ *Survivor Pack*\n"
+        "💵 **R$ 59,90** ➔ `2.575 CZP` │ *Raider Pack*\n"
+        "💵 **R$ 124,90** ➔ `4.750 CZP` │ *Warlord Pack*\n"
+        "💵 **R$ 174,90** ➔ `6.425 CZP` │ 🔥 *+775 CZP bônus*\n"
+        "💵 **R$ 349,90** ➔ `12.850 CZP` │ 💎 **+2150 CZP bônus**"
     )
 
     embed.add_field(
@@ -941,37 +904,37 @@ class CZPPackageSelect(ui.Select):
         options = [
             discord.SelectOption(
                 label="Grátis - Saldo Inicial",
-                description="300 CZP • disponível a cada 365 dias",
+                description="400 CZP • disponível a cada 365 dias",
                 value="starter"
             ),
             discord.SelectOption(
-                label="R$ 10,00 • 1.000 CZP",
+                label="R$ 10,90 • 400 CZP",
                 description="Starter Pack",
                 value="p1"
             ),
             discord.SelectOption(
-                label="R$ 25,00 • 2.600 CZP",
+                label="R$ 34,90 • 1.275 CZP",
                 description="Survivor Pack",
                 value="p2"
             ),
             discord.SelectOption(
-                label="R$ 50,00 • 5.500 CZP",
+                label="R$ 59,90 • 2.575 CZP",
                 description="Raider Pack",
                 value="p3"
             ),
             discord.SelectOption(
-                label="R$ 100,00 • 12.000 CZP",
+                label="R$ 124,90 • 4.750 CZP",
                 description="Warlord Pack",
                 value="p4"
             ),
             discord.SelectOption(
-                label="R$ 150,00 • 18.500 CZP",
-                description="Black Market Pack • +3500 bônus",
+                label="R$ 174,90 • 6.425 CZP",
+                description="Black Market Pack • +775 bônus",
                 value="p5"
             ),
             discord.SelectOption(
-                label="R$ 300,00 • 39.000 CZP",
-                description="Carnage Elite Pack • +9000 bônus",
+                label="R$ 349,90 • 12.850 CZP",
+                description="Carnage Elite Pack • +2150 bônus",
                 value="p6"
             ),
         ]
@@ -1098,7 +1061,8 @@ class CZPPackageSelect(ui.Select):
 
         payment_embed.add_field(
             name="📋 Código PIX Copia e Cola",
-            value=f"```{PIX_CODE}```",
+            value=f"```{PIX_CODE}
+```",
             inline=False
         )
 
@@ -1123,41 +1087,13 @@ class CZPPackageSelect(ui.Select):
             color=0xFFD700,
             timestamp=datetime.now()
         )
-        admin_embed.add_field(
-            name="Pedido",
-            value=order_id,
-            inline=False
-        )
-        admin_embed.add_field(
-            name="Usuário",
-            value=f"{interaction.user} ({interaction.user.id})",
-            inline=False
-        )
-        admin_embed.add_field(
-            name="Pacote",
-            value=package["name"],
-            inline=False
-        )
-        admin_embed.add_field(
-            name="Valor",
-            value=package["price_brl"],
-            inline=True
-        )
-        admin_embed.add_field(
-            name="CZP",
-            value=f"{package['czp']} CZP",
-            inline=True
-        )
-        admin_embed.add_field(
-            name="Observação",
-            value=package["bonus"],
-            inline=False
-        )
-        admin_embed.add_field(
-            name="Status",
-            value="Aguardando pagamento",
-            inline=False
-        )
+        admin_embed.add_field(name="Pedido", value=order_id, inline=False)
+        admin_embed.add_field(name="Usuário", value=f"{interaction.user} ({interaction.user.id})", inline=False)
+        admin_embed.add_field(name="Pacote", value=package["name"], inline=False)
+        admin_embed.add_field(name="Valor", value=package["price_brl"], inline=True)
+        admin_embed.add_field(name="CZP", value=f"{package['czp']} CZP", inline=True)
+        admin_embed.add_field(name="Observação", value=package["bonus"], inline=False)
+        admin_embed.add_field(name="Status", value="Aguardando pagamento", inline=False)
 
         admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
         if admin_channel:
@@ -1188,7 +1124,6 @@ class CZPPackageView(ui.View):
     def __init__(self):
         super().__init__(timeout=120)
         self.add_item(CZPPackageSelect())
-
 
 
 # =========================
@@ -1233,17 +1168,17 @@ def build_czp_packages_embed_es():
 
     embed.add_field(
         name="🎁 Beneficio Gratuito",
-        value="`Gratis` ➔ **Saldo Inicial**\n💰 **+300 CZP**\n⏱️ *Disponible 1 vez cada 365 días.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
+        value="`Gratis` ➔ **Saldo Inicial**\n💰 **+400 CZP**\n⏱️ *Disponible 1 vez cada 365 días.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
         inline=False
     )
 
     paid_value = (
-        "💵 **R$ 10,00** ➔ `1.000 CZP` │ *Paquete Inicial*\n"
-        "💵 **R$ 25,00** ➔ `2.600 CZP` │ *Paquete Sobreviviente*\n"
-        "💵 **R$ 50,00** ➔ `5.500 CZP` │ *Paquete Raider*\n"
-        "💵 **R$ 100,00** ➔ `12.000 CZP` │ *Paquete Warlord*\n"
-        "💵 **R$ 150,00** ➔ `18.500 CZP` │ 🔥 *+3500 CZP bono*\n"
-        "💵 **R$ 300,00** ➔ `39.000 CZP` │ 💎 **+9000 CZP bono**"
+        "💵 **R$ 10,90** ➔ `400 CZP` │ *Paquete Inicial*\n"
+        "💵 **R$ 34,90** ➔ `1.275 CZP` │ *Paquete Sobreviviente*\n"
+        "💵 **R$ 59,90** ➔ `2.575 CZP` │ *Paquete Raider*\n"
+        "💵 **R$ 124,90** ➔ `4.750 CZP` │ *Paquete Warlord*\n"
+        "💵 **R$ 174,90** ➔ `6.425 CZP` │ 🔥 *+775 CZP bono*\n"
+        "💵 **R$ 349,90** ➔ `12.850 CZP` │ 💎 **+2150 CZP bono**"
     )
 
     embed.add_field(
@@ -1349,11 +1284,7 @@ class PurchaseModalES(ui.Modal, title="Finalizar Compra"):
 
         dm_sent = await send_dm_safe(interaction.user, buyer_embed)
 
-        admin_embed = discord.Embed(
-            title="📦 Nuevo Pedido VIP",
-            color=0xFFD700,
-            timestamp=datetime.now()
-        )
+        admin_embed = discord.Embed(title="📦 Nuevo Pedido VIP", color=0xFFD700, timestamp=datetime.now())
         admin_embed.add_field(name="Usuario", value=f"{interaction.user} ({interaction.user.id})", inline=False)
         admin_embed.add_field(name="Nickname in-game", value=self.nickname.value, inline=False)
         admin_embed.add_field(name="Item", value=item["name"], inline=False)
@@ -1451,12 +1382,12 @@ class CZPPackageSelectES(ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(label="Gratis - Saldo Inicial", description="400 CZP • disponible cada 365 días", value="starter"),
-            discord.SelectOption(label="R$ 10,00 • 1.000 CZP", description="Paquete Inicial", value="p1"),
-            discord.SelectOption(label="R$ 25,00 • 2.600 CZP", description="Paquete Sobreviviente", value="p2"),
-            discord.SelectOption(label="R$ 50,00 • 5.500 CZP", description="Paquete Raider", value="p3"),
-            discord.SelectOption(label="R$ 100,00 • 12.000 CZP", description="Paquete Warlord", value="p4"),
-            discord.SelectOption(label="R$ 150,00 • 18.500 CZP", description="Mercado Negro • +775 bono", value="p5"),
-            discord.SelectOption(label="R$ 300,00 • 39.000 CZP", description="Carnage Elite • +2150 bono", value="p6"),
+            discord.SelectOption(label="R$ 10,90 • 400 CZP", description="Paquete Inicial", value="p1"),
+            discord.SelectOption(label="R$ 34,90 • 1.275 CZP", description="Paquete Sobreviviente", value="p2"),
+            discord.SelectOption(label="R$ 59,90 • 2.575 CZP", description="Paquete Raider", value="p3"),
+            discord.SelectOption(label="R$ 124,90 • 4.750 CZP", description="Paquete Warlord", value="p4"),
+            discord.SelectOption(label="R$ 174,90 • 6.425 CZP", description="Mercado Negro • +775 bono", value="p5"),
+            discord.SelectOption(label="R$ 349,90 • 12.850 CZP", description="Carnage Elite • +2150 bono", value="p6"),
         ]
 
         super().__init__(placeholder="Selecciona un paquete de CZP...", min_values=1, max_values=1, options=options)
@@ -1491,7 +1422,7 @@ class CZPPackageSelectES(ui.Select):
 
             free_embed = discord.Embed(
                 title="🎁 Recibo de Canje CZP",
-                description="Tu saldo inicial fue liberado con éxito.",
+                description="Tu saldo inicial foi liberado con éxito.",
                 color=0x2ECC71,
                 timestamp=datetime.now()
             )
@@ -1621,6 +1552,7 @@ class SpanishShopView(ui.View):
     async def acquire_czp_button_es(self, interaction: discord.Interaction, button: ui.Button):
         await interaction.response.send_message(embed=build_czp_packages_embed_es(), view=CZPPackageViewES(), ephemeral=True)
 
+
 # =========================
 # BOTÕES PRINCIPAIS
 # =========================
@@ -1702,20 +1634,6 @@ async def setup_shop(ctx):
     embed = build_shop_embed()
     await ctx.send(embed=embed, view=MainShopView())
 
-
-
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def limparbackups(ctx, limit: int = 100):
-    deleted = 0
-
-    async for message in ctx.channel.history(limit=limit):
-        if message.author == bot.user and message.content.startswith(BACKUP_PREFIX):
-            await message.delete()
-            deleted += 1
-
-    await ctx.send(f"✅ Limpeza concluída. Backups removidos deste canal: **{deleted}**", delete_after=10)
 
 # =========================
 # COMANDOS ADMIN DE MOEDAS
