@@ -1,9 +1,5 @@
 import json
 import os
-import asyncio
-import tempfile
-import shutil
-import threading
 from datetime import datetime, timedelta
 
 import discord
@@ -41,100 +37,69 @@ ORDERS_FILE = os.path.join(script_dir, "orders.json")
 PIX_CODE = """00020126580014br.gov.bcb.pix013696f850dd-18da-4a87-a008-51e6a9f1e1c95204000053039865802BR5919YGOR ATTILA DE LIMA6009Sao Paulo62290525REC69D91E76AB4C03429651466304A923"""
 PIX_QR_FILE = os.path.join(script_dir, "pix_qr.png")
 
-DATA_LOCK = threading.RLock()
-
-def _backup_path(file_path: str) -> str:
-    return file_path + ".bak"
-
 def _load_json_file(file_path: str, default=None, label="arquivo"):
     if default is None:
         default = {}
 
-    with DATA_LOCK:
-        try:
-            if not os.path.exists(file_path):
+    try:
+        if not os.path.exists(file_path):
+            return default
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+            if not content:
                 return default
+            return json.loads(content)
 
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-                if not content:
-                    return default
-                return json.loads(content)
+    except json.JSONDecodeError as e:
+        print(f"⚠️ {label} corrompido: {e}")
+        return default
 
-        except json.JSONDecodeError as e:
-            print(f"⚠️ {label} corrompido: {e}")
+    except (PermissionError, IOError) as e:
+        print(f"⚠️ Erro ao ler {label}: {e}")
+        return default
 
-            bak = _backup_path(file_path)
-            if os.path.exists(bak):
-                try:
-                    with open(bak, "r", encoding="utf-8") as f:
-                        return json.load(f)
-                except Exception as backup_error:
-                    print(f"⚠️ Backup local também falhou: {backup_error}")
 
-            return None
-
-        except (PermissionError, IOError) as e:
-            print(f"⚠️ Erro ao ler {label}: {e}")
-            return None
-
-def _atomic_save_json_file(file_path: str, data, label="arquivo"):
+def _save_json_file(file_path: str, data, label="arquivo"):
     if data is None:
         return False
 
-    with DATA_LOCK:
-        try:
-            folder = os.path.dirname(file_path)
-            os.makedirs(folder, exist_ok=True)
+    try:
+        folder = os.path.dirname(file_path)
+        os.makedirs(folder, exist_ok=True)
 
-            # Mantém uma cópia .bak antes de sobrescrever.
-            if os.path.exists(file_path):
-                try:
-                    shutil.copy2(file_path, _backup_path(file_path))
-                except Exception as backup_error:
-                    print(f"⚠️ Não consegui criar backup local de {label}: {backup_error}")
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
 
-            fd, temp_path = tempfile.mkstemp(prefix=".tmp_", suffix=".json", dir=folder)
-            try:
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=4, ensure_ascii=False)
-                    f.flush()
-                    os.fsync(f.fileno())
+        return True
 
-                os.replace(temp_path, file_path)
+    except Exception as e:
+        print(f"⚠️ Erro ao salvar {label}: {e}")
+        return False
 
-            finally:
-                if os.path.exists(temp_path):
-                    try:
-                        os.remove(temp_path)
-                    except Exception:
-                        pass
-
-            return True
-
-        except Exception as e:
-            print(f"⚠️ Erro ao salvar {label}: {e}")
-            return False
 
 def load_data():
     return _load_json_file(DATA_FILE, {}, "coins.json")
 
+
 def save_data(data):
-    return _atomic_save_json_file(DATA_FILE, data, "coins.json")
+    return _save_json_file(DATA_FILE, data, "coins.json")
+
 
 def load_starter_claims():
-    result = _load_json_file(STARTER_FILE, {}, "starter_claims.json")
-    return result if result is not None else {}
+    return _load_json_file(STARTER_FILE, {}, "starter_claims.json")
+
 
 def save_starter_claims(data):
-    return _atomic_save_json_file(STARTER_FILE, data, "starter_claims.json")
+    return _save_json_file(STARTER_FILE, data, "starter_claims.json")
+
 
 def load_orders():
-    result = _load_json_file(ORDERS_FILE, {}, "orders.json")
-    return result if result is not None else {}
+    return _load_json_file(ORDERS_FILE, {}, "orders.json")
+
 
 def save_orders(data):
-    return _atomic_save_json_file(ORDERS_FILE, data, "orders.json")
+    return _save_json_file(ORDERS_FILE, data, "orders.json")
 
 
 # =========================
