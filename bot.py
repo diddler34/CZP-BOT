@@ -174,39 +174,39 @@ CZP_PACKAGES = {
     },
     "p1": {
         "name": "Starter Pack",
-        "price_brl": "R$ 10,90",
-        "czp": 1000,
+        "price_brl": "R$ 10,00",
+        "czp": 500,
         "bonus": "Pacote inicial"
     },
     "p2": {
         "name": "Survivor Pack",
-        "price_brl": "R$ 34,90",
-        "czp": 3000,
+        "price_brl": "R$ 20,00",
+        "czp": 1100,
         "bonus": "Pacote sobrevivente"
     },
     "p3": {
         "name": "Raider Pack",
-        "price_brl": "R$ 59,90",
-        "czp": 4000,
+        "price_brl": "R$ 50,00",
+        "czp": 3000,
         "bonus": "Pacote raider"
     },
     "p4": {
         "name": "Warlord Pack",
-        "price_brl": "R$ 124,90",
-        "czp": 6000,
+        "price_brl": "R$ 100,00",
+        "czp": 6200,
         "bonus": "Pacote avançado"
     },
     "p5": {
         "name": "Black Market Pack",
-        "price_brl": "R$ 174,90",
-        "czp": 8775,
-        "bonus": "+775 CZP bônus"
+        "price_brl": "R$ 200,00",
+        "czp": 14000,
+        "bonus": "Pacote black market"
     },
     "p6": {
         "name": "Carnage Elite Pack",
-        "price_brl": "R$ 349,90",
-        "czp": 12850,
-        "bonus": "+2150 CZP bônus"
+        "price_brl": "R$ 450,00",
+        "czp": 38000,
+        "bonus": "Pacote elite"
     }
 }
 
@@ -279,7 +279,9 @@ PACKAGE_ES = {
     "10% de bônus incluso": "10% de bono incluido",
     "20% de bônus - Melhor custo benefício": "20% de bono - Mejor costo-beneficio",
     "+775 CZP bônus": "+775 CZP bono",
-    "+2150 CZP bônus": "+2150 CZP bono"
+    "+2150 CZP bônus": "+2150 CZP bono",
+    "Pacote black market": "Paquete mercado negro",
+    "Pacote elite": "Paquete elite"
 }
 
 
@@ -403,12 +405,12 @@ def build_czp_packages_embed():
     )
 
     paid_value = (
-        "💵 **R$ 10,90** ➔ `1000 CZP` │ *Starter Pack*\n"
-        "💵 **R$ 34,90** ➔ `3000 CZP` │ *Survivor Pack*\n"
-        "💵 **R$ 59,90** ➔ `4000 CZP` │ *Raider Pack*\n"
-        "💵 **R$ 124,90** ➔ `6000 CZP` │ *Warlord Pack*\n"
-        "💵 **R$ 174,90** ➔ `8775 CZP` │ 🔥 *+775 CZP bônus*\n"
-        "💵 **R$ 349,90** ➔ `12.850 CZP` │ 💎 **+2150 CZP bônus**"
+        "💵 **R$ 10,00** ➔ `500 CZP` │ *Starter Pack*\n"
+        "💵 **R$ 20,00** ➔ `1100 CZP` │ *Survivor Pack*\n"
+        "💵 **R$ 50,00** ➔ `3000 CZP` │ *Raider Pack*\n"
+        "💵 **R$ 100,00** ➔ `6200 CZP` │ *Warlord Pack*\n"
+        "💵 **R$ 200,00** ➔ `14.000 CZP` │ *Black Market Pack*\n"
+        "💵 **R$ 450,00** ➔ `38.000 CZP` │ *Carnage Elite Pack*"
     )
 
     embed.add_field(
@@ -744,33 +746,33 @@ class CZPPackageSelect(ui.Select):
                 value="starter"
             ),
             discord.SelectOption(
-                label="R$ 10,90 • 1000 CZP",
+                label="R$ 10,00 • 500 CZP",
                 description="Starter Pack",
                 value="p1"
             ),
             discord.SelectOption(
-                label="R$ 34,90 • 3000 CZP",
+                label="R$ 20,00 • 1100 CZP",
                 description="Survivor Pack",
                 value="p2"
             ),
             discord.SelectOption(
-                label="R$ 59,90 • 4000 CZP",
+                label="R$ 50,00 • 3000 CZP",
                 description="Raider Pack",
                 value="p3"
             ),
             discord.SelectOption(
-                label="R$ 124,90 • 6000 CZP",
+                label="R$ 100,00 • 6200 CZP",
                 description="Warlord Pack",
                 value="p4"
             ),
             discord.SelectOption(
-                label="R$ 174,90 • 8775 CZP",
-                description="Black Market Pack • +775 bônus",
+                label="R$ 200,00 • 14.000 CZP",
+                description="Black Market Pack",
                 value="p5"
             ),
             discord.SelectOption(
-                label="R$ 349,90 • 12.850 CZP",
-                description="Carnage Elite Pack • +2150 bônus",
+                label="R$ 450,00 • 38.000 CZP",
+                description="Carnage Elite Pack",
                 value="p6"
             ),
         ]
@@ -1037,12 +1039,12 @@ def build_czp_packages_embed_es():
     )
 
     paid_value = (
-        "💵 **R$ 10,90** ➔ `1000 CZP` │ *Paquete Inicial*\n"
-        "💵 **R$ 34,90** ➔ `3000 CZP` │ *Paquete Sobreviviente*\n"
-        "💵 **R$ 59,90** ➔ `4000 CZP` │ *Paquete Raider*\n"
-        "💵 **R$ 124,90** ➔ `6000 CZP` │ *Paquete Warlord*\n"
-        "💵 **R$ 174,90** ➔ `8775 CZP` │ 🔥 *+775 CZP bono*\n"
-        "💵 **R$ 349,90** ➔ `12.850 CZP` │ 💎 **+2150 CZP bono**"
+        "💵 **R$ 10,00** ➔ `500 CZP` │ *Paquete Inicial*\n"
+        "💵 **R$ 20,00** ➔ `1100 CZP` │ *Paquete Sobreviviente*\n"
+        "💵 **R$ 50,00** ➔ `3000 CZP` │ *Paquete Raider*\n"
+        "💵 **R$ 100,00** ➔ `6200 CZP` │ *Paquete Warlord*\n"
+        "💵 **R$ 200,00** ➔ `14.000 CZP` │ *Paquete Mercado Negro*\n"
+        "💵 **R$ 450,00** ➔ `38.000 CZP` │ *Paquete Carnage Elite*"
     )
 
     embed.add_field(
@@ -1250,12 +1252,12 @@ class CZPPackageSelectES(ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(label="Gratis - Saldo Inicial", description="1500 CZP • disponible cada 365 días", value="starter"),
-            discord.SelectOption(label="R$ 10,90 • 1000 CZP", description="Paquete Inicial", value="p1"),
-            discord.SelectOption(label="R$ 34,90 • 3000 CZP", description="Paquete Sobreviviente", value="p2"),
-            discord.SelectOption(label="R$ 59,90 • 4000 CZP", description="Paquete Raider", value="p3"),
-            discord.SelectOption(label="R$ 124,90 • 6000 CZP", description="Paquete Warlord", value="p4"),
-            discord.SelectOption(label="R$ 174,90 • 8775 CZP", description="Mercado Negro • +775 bono", value="p5"),
-            discord.SelectOption(label="R$ 349,90 • 12.850 CZP", description="Carnage Elite • +2150 bono", value="p6"),
+            discord.SelectOption(label="R$ 10,00 • 500 CZP", description="Paquete Inicial", value="p1"),
+            discord.SelectOption(label="R$ 20,00 • 1100 CZP", description="Paquete Sobreviviente", value="p2"),
+            discord.SelectOption(label="R$ 50,00 • 3000 CZP", description="Paquete Raider", value="p3"),
+            discord.SelectOption(label="R$ 100,00 • 6200 CZP", description="Paquete Warlord", value="p4"),
+            discord.SelectOption(label="R$ 200,00 • 14.000 CZP", description="Mercado Negro", value="p5"),
+            discord.SelectOption(label="R$ 450,00 • 38.000 CZP", description="Carnage Elite", value="p6"),
         ]
 
         super().__init__(placeholder="Selecciona un paquete de CZP...", min_values=1, max_values=1, options=options)
