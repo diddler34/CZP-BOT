@@ -127,9 +127,13 @@ def _atomic_save_json_file(file_path: str, data, label="arquivo", backup_to_disc
             return False
 
 def _schedule_discord_backup(file_path: str, label: str):
-    # Backup externo simples: envia o JSON para o canal ADM.
-    # Isso protege contra reset de arquivos no Railway depois de update/redeploy.
+    # Backup externo simples: envia o JSON SOMENTE para um canal/webhook de backup configurado.
+    # IMPORTANTE: se BACKUP_WEBHOOK_URL ou BACKUP_CHANNEL_ID não estiverem configurados,
+    # o bot NÃO manda backup no canal de Pedidos VIP.
     try:
+        if not BACKUP_WEBHOOK_URL and not BACKUP_CHANNEL_ID:
+            return
+
         if not bot.is_ready():
             return
 
@@ -155,7 +159,7 @@ async def _get_backup_channel_id_from_webhook():
             print("⚠️ BACKUP_CHANNEL_ID inválido. Ignorando.")
 
     if not BACKUP_WEBHOOK_URL:
-        return ADMIN_CHANNEL_ID
+        return None
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -197,10 +201,14 @@ async def _send_discord_backup(file_path: str, label: str):
                         print(f"⚠️ Webhook backup falhou. Status {response.status}: {text}")
             return
 
-        # Fallback: se não tiver webhook configurada, usa o canal antigo de Pedidos VIP.
-        channel = bot.get_channel(ADMIN_CHANNEL_ID)
+        # Fallback seguro: usa BACKUP_CHANNEL_ID somente se você configurar um canal separado de backup.
+        # Nunca usa o canal de Pedidos VIP para não poluir a página de pedidos.
+        if not BACKUP_CHANNEL_ID:
+            return
+
+        channel = bot.get_channel(int(BACKUP_CHANNEL_ID))
         if channel is None:
-            channel = await bot.fetch_channel(ADMIN_CHANNEL_ID)
+            channel = await bot.fetch_channel(int(BACKUP_CHANNEL_ID))
 
         await channel.send(
             content=content,
@@ -286,61 +294,61 @@ def save_orders(data):
 # =========================
 SHOP_CATEGORIES = {
     "🧱 Construção & Kits de Base": {
-        1: {"name": "Caixa de Pregos", "czp": 400},
-        2: {"name": "Pacote de Tábuas (30)", "czp": 550},
-        3: {"name": "Serrote", "czp": 200},
+        1: {"name": "Caixa de Pregos", "czp": 350},
+        2: {"name": "Pacote de Tábuas (30)", "czp": 450},
+        3: {"name": "Serrote", "czp": 250},
         4: {"name": "CodeLock", "czp": 900},
         5: {"name": "Bandeira", "czp": 600},
-        6: {"name": "Kit Bandeira", "czp": 1400},
-        7: {"name": "Chapa de Metal (10)", "czp": 2200},
-        8: {"name": "Bica de Água", "czp": 2600},
-        9: {"name": "Arame Farpado", "czp": 500},
-        10: {"name": "Kit Arame Farpado", "czp": 1400},
-        11: {"name": "Kit Base Básico", "czp": 2600},
-        12: {"name": "Kit Base Completo", "czp": 6425}
+        6: {"name": "Kit Bandeira", "czp": 1200},
+        7: {"name": "Chapa de Metal (10)", "czp": 1600},
+        8: {"name": "Bica de Água", "czp": 1800},
+        9: {"name": "Arame Farpado", "czp": 400},
+        10: {"name": "Kit Arame Farpado", "czp": 1000},
+        11: {"name": "Kit Base Básico", "czp": 2200},
+        12: {"name": "Kit Base Completo", "czp": 5200}
     },
 
     "📦 Armazenamento": {
-        13: {"name": "Container Pequeno", "czp": 500},
-        14: {"name": "Container Médio", "czp": 900},
-        15: {"name": "Armário Militar Grande", "czp": 1600}
+        13: {"name": "Container Pequeno", "czp": 600},
+        14: {"name": "Container Médio", "czp": 1000},
+        15: {"name": "Armário Militar Grande", "czp": 1800}
     },
 
     "🏎️ Veículos Mod": {
-        16: {"name": "Mod Car 4x4", "czp": 3800},
-        17: {"name": "Mod Car Sedan", "czp": 3800}
+        16: {"name": "Mod Car 4x4", "czp": 3000},
+        17: {"name": "Mod Car Sedan", "czp": 3000}
     },
 
     "🔧 Peças & Utilitários de Carro": {
-        18: {"name": "Chave de Carro", "czp": 1275},
-        19: {"name": "Lock Pick de Carro", "czp": 2575},
-        20: {"name": "Bateria de Carro", "czp": 500},
-        21: {"name": "Radiador de Carro", "czp": 500},
-        22: {"name": "Vela de Ignição de Carro", "czp": 400},
-        23: {"name": "Roda de Carro", "czp": 600},
-        24: {"name": "Galão de Gasolina", "czp": 500}
+        18: {"name": "Chave de Carro", "czp": 900},
+        19: {"name": "Lock Pick de Carro", "czp": 1500},
+        20: {"name": "Bateria de Carro", "czp": 450},
+        21: {"name": "Radiador de Carro", "czp": 450},
+        22: {"name": "Vela de Ignição de Carro", "czp": 350},
+        23: {"name": "Roda de Carro", "czp": 500},
+        24: {"name": "Galão de Gasolina", "czp": 350}
     },
 
     "🎒 Equipamentos & Sobrevivência": {
         25: {"name": "Machadinha", "czp": 300},
-        26: {"name": "Pedra de Amolar", "czp": 350},
-        27: {"name": "Kit Inicial", "czp": 750},
-        28: {"name": "Mochila MMG 120", "czp": 1600},
+        26: {"name": "Pedra de Amolar", "czp": 300},
+        27: {"name": "Kit Inicial", "czp": 700},
+        28: {"name": "Mochila MMG 120", "czp": 1400},
         29: {"name": "Kit NBC Completo", "czp": 1800},
-        30: {"name": "Massa Epóxi", "czp": 400},
-        31: {"name": "Nightvision", "czp": 2600}
+        30: {"name": "Massa Epóxi", "czp": 350},
+        31: {"name": "Nightvision", "czp": 2400}
     },
 
     "🪖 MMG Gear": {
-        32: {"name": "Set Militar MMG Alpine", "czp": 2600}
+        32: {"name": "Set Militar MMG Alpine", "czp": 2200}
     },
 
     "⚡ VIP & Serviços": {
-        33: {"name": "Status VIP 30 dias", "czp": 2600},
-        34: {"name": "Prioridade na Fila - 30 Dias", "czp": 1275}
+        33: {"name": "Status VIP 30 dias", "czp": 4900},
+        34: {"name": "Prioridade na Fila - 30 Dias", "czp": 1200},
+        35: {"name": "Seguro de Carro - 30 Dias", "czp": 1500}
     }
 }
-
 SHOP_ITEMS = {}
 for category in SHOP_CATEGORIES.values():
     SHOP_ITEMS.update(category)
@@ -352,47 +360,46 @@ CZP_PACKAGES = {
     "starter": {
         "name": "Grátis - Saldo Inicial",
         "price_brl": "R$ 0,00",
-        "czp": 400,
+        "czp": 300,
         "bonus": "Disponível a cada 365 dias"
     },
     "p1": {
         "name": "Starter Pack",
-        "price_brl": "R$ 10,90",
-        "czp": 400,
-        "bonus": "Pacote inicial"
+        "price_brl": "R$ 10,00",
+        "czp": 1000,
+        "bonus": "Taxa padrão: 100 CZP por R$ 1"
     },
     "p2": {
         "name": "Survivor Pack",
-        "price_brl": "R$ 34,90",
-        "czp": 1275,
-        "bonus": "Pacote sobrevivente"
+        "price_brl": "R$ 25,00",
+        "czp": 2600,
+        "bonus": "+100 CZP bônus"
     },
     "p3": {
         "name": "Raider Pack",
-        "price_brl": "R$ 59,90",
-        "czp": 2575,
-        "bonus": "Pacote raider"
+        "price_brl": "R$ 50,00",
+        "czp": 5500,
+        "bonus": "+500 CZP bônus"
     },
     "p4": {
         "name": "Warlord Pack",
-        "price_brl": "R$ 124,90",
-        "czp": 4750,
-        "bonus": "Pacote avançado"
+        "price_brl": "R$ 100,00",
+        "czp": 12000,
+        "bonus": "+2000 CZP bônus"
     },
     "p5": {
         "name": "Black Market Pack",
-        "price_brl": "R$ 174,90",
-        "czp": 6425,
-        "bonus": "+775 CZP bônus"
+        "price_brl": "R$ 150,00",
+        "czp": 18500,
+        "bonus": "+3500 CZP bônus"
     },
     "p6": {
         "name": "Carnage Elite Pack",
-        "price_brl": "R$ 349,90",
-        "czp": 12850,
-        "bonus": "+2150 CZP bônus"
+        "price_brl": "R$ 300,00",
+        "czp": 39000,
+        "bonus": "+9000 CZP bônus"
     }
 }
-
 
 # =========================
 # TRADUÇÃO ESPANHOL
@@ -441,7 +448,8 @@ ITEM_ES = {
     "Nightvision": "Visión Nocturna",
     "Set Militar MMG Alpine": "Set Militar MMG Alpine",
     "Status VIP 30 dias": "Estado VIP 30 días",
-    "Prioridade na Fila - 30 Dias": "Prioridad en la Fila - 30 Días"
+    "Prioridade na Fila - 30 Dias": "Prioridad en la Fila - 30 Días",
+    "Seguro de Carro - 30 Dias": "Seguro de Auto - 30 Días"
 }
 
 PACKAGE_ES = {
@@ -466,7 +474,13 @@ PACKAGE_ES = {
     "10% de bônus incluso": "10% de bono incluido",
     "20% de bônus - Melhor custo benefício": "20% de bono - Mejor costo-beneficio",
     "+775 CZP bônus": "+775 CZP bono",
-    "+2150 CZP bônus": "+2150 CZP bono"
+    "+2150 CZP bônus": "+2150 CZP bono",
+    "Taxa padrão: 100 CZP por R$ 1": "Tarifa estándar: 100 CZP por R$ 1",
+    "+100 CZP bônus": "+100 CZP bono",
+    "+500 CZP bônus": "+500 CZP bono",
+    "+2000 CZP bônus": "+2000 CZP bono",
+    "+3500 CZP bônus": "+3500 CZP bono",
+    "+9000 CZP bônus": "+9000 CZP bono"
 }
 
 
@@ -585,17 +599,17 @@ def build_czp_packages_embed():
 
     embed.add_field(
         name="🎁 Benefício Gratuito",
-        value="`Gratuito` ➔ **Saldo Inicial**\n💰 **+400 CZP**\n⏱️ *Disponível 1 vez a cada 365 dias.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
+        value="`Gratuito` ➔ **Saldo Inicial**\n💰 **+300 CZP**\n⏱️ *Disponível 1 vez a cada 365 dias.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
         inline=False
     )
 
     paid_value = (
-        "💵 **R$ 10,90** ➔ `400 CZP` │ *Starter Pack*\n"
-        "💵 **R$ 34,90** ➔ `1.275 CZP` │ *Survivor Pack*\n"
-        "💵 **R$ 59,90** ➔ `2.575 CZP` │ *Raider Pack*\n"
-        "💵 **R$ 124,90** ➔ `4.750 CZP` │ *Warlord Pack*\n"
-        "💵 **R$ 174,90** ➔ `6.425 CZP` │ 🔥 *+775 CZP bônus*\n"
-        "💵 **R$ 349,90** ➔ `12.850 CZP` │ 💎 **+2150 CZP bônus**"
+        "💵 **R$ 10,00** ➔ `1.000 CZP` │ *Starter Pack*\n"
+        "💵 **R$ 25,00** ➔ `2.600 CZP` │ *Survivor Pack*\n"
+        "💵 **R$ 50,00** ➔ `5.500 CZP` │ *Raider Pack*\n"
+        "💵 **R$ 100,00** ➔ `12.000 CZP` │ *Warlord Pack*\n"
+        "💵 **R$ 150,00** ➔ `18.500 CZP` │ 🔥 *+3.500 CZP bônus*\n"
+        "💵 **R$ 300,00** ➔ `39.000 CZP` │ 💎 **+9.000 CZP bônus**"
     )
 
     embed.add_field(
@@ -927,37 +941,37 @@ class CZPPackageSelect(ui.Select):
         options = [
             discord.SelectOption(
                 label="Grátis - Saldo Inicial",
-                description="400 CZP • disponível a cada 365 dias",
+                description="300 CZP • disponível a cada 365 dias",
                 value="starter"
             ),
             discord.SelectOption(
-                label="R$ 10,90 • 400 CZP",
+                label="R$ 10,00 • 1.000 CZP",
                 description="Starter Pack",
                 value="p1"
             ),
             discord.SelectOption(
-                label="R$ 34,90 • 1.275 CZP",
+                label="R$ 25,00 • 2.600 CZP",
                 description="Survivor Pack",
                 value="p2"
             ),
             discord.SelectOption(
-                label="R$ 59,90 • 2.575 CZP",
+                label="R$ 50,00 • 5.500 CZP",
                 description="Raider Pack",
                 value="p3"
             ),
             discord.SelectOption(
-                label="R$ 124,90 • 4.750 CZP",
+                label="R$ 100,00 • 12.000 CZP",
                 description="Warlord Pack",
                 value="p4"
             ),
             discord.SelectOption(
-                label="R$ 174,90 • 6.425 CZP",
-                description="Black Market Pack • +775 bônus",
+                label="R$ 150,00 • 18.500 CZP",
+                description="Black Market Pack • +3500 bônus",
                 value="p5"
             ),
             discord.SelectOption(
-                label="R$ 349,90 • 12.850 CZP",
-                description="Carnage Elite Pack • +2150 bônus",
+                label="R$ 300,00 • 39.000 CZP",
+                description="Carnage Elite Pack • +9000 bônus",
                 value="p6"
             ),
         ]
@@ -1219,17 +1233,17 @@ def build_czp_packages_embed_es():
 
     embed.add_field(
         name="🎁 Beneficio Gratuito",
-        value="`Gratis` ➔ **Saldo Inicial**\n💰 **+400 CZP**\n⏱️ *Disponible 1 vez cada 365 días.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
+        value="`Gratis` ➔ **Saldo Inicial**\n💰 **+300 CZP**\n⏱️ *Disponible 1 vez cada 365 días.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
         inline=False
     )
 
     paid_value = (
-        "💵 **R$ 10,90** ➔ `400 CZP` │ *Paquete Inicial*\n"
-        "💵 **R$ 34,90** ➔ `1.275 CZP` │ *Paquete Sobreviviente*\n"
-        "💵 **R$ 59,90** ➔ `2.575 CZP` │ *Paquete Raider*\n"
-        "💵 **R$ 124,90** ➔ `4.750 CZP` │ *Paquete Warlord*\n"
-        "💵 **R$ 174,90** ➔ `6.425 CZP` │ 🔥 *+775 CZP bono*\n"
-        "💵 **R$ 349,90** ➔ `12.850 CZP` │ 💎 **+2150 CZP bono**"
+        "💵 **R$ 10,00** ➔ `1.000 CZP` │ *Paquete Inicial*\n"
+        "💵 **R$ 25,00** ➔ `2.600 CZP` │ *Paquete Sobreviviente*\n"
+        "💵 **R$ 50,00** ➔ `5.500 CZP` │ *Paquete Raider*\n"
+        "💵 **R$ 100,00** ➔ `12.000 CZP` │ *Paquete Warlord*\n"
+        "💵 **R$ 150,00** ➔ `18.500 CZP` │ 🔥 *+3500 CZP bono*\n"
+        "💵 **R$ 300,00** ➔ `39.000 CZP` │ 💎 **+9000 CZP bono**"
     )
 
     embed.add_field(
@@ -1437,12 +1451,12 @@ class CZPPackageSelectES(ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(label="Gratis - Saldo Inicial", description="400 CZP • disponible cada 365 días", value="starter"),
-            discord.SelectOption(label="R$ 10,90 • 400 CZP", description="Paquete Inicial", value="p1"),
-            discord.SelectOption(label="R$ 34,90 • 1.275 CZP", description="Paquete Sobreviviente", value="p2"),
-            discord.SelectOption(label="R$ 59,90 • 2.575 CZP", description="Paquete Raider", value="p3"),
-            discord.SelectOption(label="R$ 124,90 • 4.750 CZP", description="Paquete Warlord", value="p4"),
-            discord.SelectOption(label="R$ 174,90 • 6.425 CZP", description="Mercado Negro • +775 bono", value="p5"),
-            discord.SelectOption(label="R$ 349,90 • 12.850 CZP", description="Carnage Elite • +2150 bono", value="p6"),
+            discord.SelectOption(label="R$ 10,00 • 1.000 CZP", description="Paquete Inicial", value="p1"),
+            discord.SelectOption(label="R$ 25,00 • 2.600 CZP", description="Paquete Sobreviviente", value="p2"),
+            discord.SelectOption(label="R$ 50,00 • 5.500 CZP", description="Paquete Raider", value="p3"),
+            discord.SelectOption(label="R$ 100,00 • 12.000 CZP", description="Paquete Warlord", value="p4"),
+            discord.SelectOption(label="R$ 150,00 • 18.500 CZP", description="Mercado Negro • +775 bono", value="p5"),
+            discord.SelectOption(label="R$ 300,00 • 39.000 CZP", description="Carnage Elite • +2150 bono", value="p6"),
         ]
 
         super().__init__(placeholder="Selecciona un paquete de CZP...", min_values=1, max_values=1, options=options)
@@ -1688,6 +1702,20 @@ async def setup_shop(ctx):
     embed = build_shop_embed()
     await ctx.send(embed=embed, view=MainShopView())
 
+
+
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def limparbackups(ctx, limit: int = 100):
+    deleted = 0
+
+    async for message in ctx.channel.history(limit=limit):
+        if message.author == bot.user and message.content.startswith(BACKUP_PREFIX):
+            await message.delete()
+            deleted += 1
+
+    await ctx.send(f"✅ Limpeza concluída. Backups removidos deste canal: **{deleted}**", delete_after=10)
 
 # =========================
 # COMANDOS ADMIN DE MOEDAS
