@@ -523,14 +523,6 @@ SHOP_CATEGORIES = {
         31: {"name": "Nightvision", "czp": 2600}
     },
 
-    "🪖 MMG Gear": {
-        32: {"name": "Set Militar MMG Alpine", "czp": 2600}
-    },
-
-    "⚡ VIP & Serviços": {
-        33: {"name": "Status VIP 30 dias", "czp": 2600},
-        34: {"name": "Prioridade na Fila - 30 Dias", "czp": 1275}
-    }
 }
 
 SHOP_ITEMS = {}
@@ -594,9 +586,7 @@ CATEGORY_ES = {
     "📦 Armazenamento": "📦 Almacenamiento",
     "🏎️ Veículos Mod": "🏎️ Vehículos Mod",
     "🔧 Peças & Utilitários de Carro": "🔧 Piezas y Utilidades de Auto",
-    "🎒 Equipamentos & Sobrevivência": "🎒 Equipamiento y Supervivencia",
-    "🪖 MMG Gear": "🪖 Equipo MMG",
-    "⚡ VIP & Serviços": "⚡ VIP y Servicios"
+    "🎒 Equipamentos & Sobrevivência": "🎒 Equipamiento y Supervivencia"
 }
 
 ITEM_ES = {
@@ -626,10 +616,7 @@ ITEM_ES = {
     "Mochila MMG 120": "Mochila MMG 120",
     "Kit NBC Completo": "Kit NBC Completo",
     "Massa Epóxi": "Masilla Epoxi",
-    "Nightvision": "Visión Nocturna",
-    "Set Militar MMG Alpine": "Set Militar MMG Alpine",
-    "Status VIP 30 dias": "Estado VIP 30 días",
-    "Prioridade na Fila - 30 Dias": "Prioridad en la Fila - 30 Días"
+    "Nightvision": "Visión Nocturna"
 }
 
 PACKAGE_ES = {
