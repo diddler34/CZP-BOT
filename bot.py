@@ -280,7 +280,7 @@ def get_balance(user_id: int) -> int:
             conn.close()
             return int(row[0]) if row else 0
         except Exception as e:
-            print(f"⚠️ Erro ao consultar saldo de {user_id}: {e}")
+            print(f"?? Erro ao consultar saldo de {user_id}: {e}")
             return 0
 
 
@@ -290,6 +290,7 @@ def add_balance(user_id: int, amount: int) -> bool:
         return False
 
     with DB_LOCK:
+        conn = None
         try:
             conn = _connect_db()
             cur = conn.cursor()
@@ -297,29 +298,27 @@ def add_balance(user_id: int, amount: int) -> bool:
             uid = str(user_id)
             now = datetime.now().isoformat()
 
-            cur.execute(f"SELECT balance FROM balances WHERE user_id = {p}", (uid,))
-            row = cur.fetchone()
-            current_balance = int(row[0]) if row else 0
-            new_balance = current_balance + int(amount)
-
             cur.execute(
                 f"""
                 INSERT INTO balances (user_id, balance, updated_at)
                 VALUES ({p}, {p}, {p})
                 ON CONFLICT(user_id) DO UPDATE SET
-                    balance = excluded.balance,
+                    balance = balances.balance + excluded.balance,
                     updated_at = excluded.updated_at
                 """,
-                (uid, new_balance, now)
+                (uid, int(amount), now)
             )
 
             conn.commit()
             cur.close()
             conn.close()
-            print(f"💰 ADD CZP | user={uid} | antes={current_balance} | add={amount} | depois={new_balance}")
+            print(f"?? ADD CZP | user={uid} | add={amount} | saldo={get_balance(user_id)}")
             return True
         except Exception as e:
-            print(f"⚠️ Erro ao adicionar saldo para {user_id}: {e}")
+            if conn:
+                conn.rollback()
+                conn.close()
+            print(f"?? Erro ao adicionar saldo para {user_id}: {e}")
             return False
 
 
@@ -329,6 +328,7 @@ def remove_balance(user_id: int, amount: int) -> bool:
         return False
 
     with DB_LOCK:
+        conn = None
         try:
             conn = _connect_db()
             cur = conn.cursor()
@@ -336,17 +336,42 @@ def remove_balance(user_id: int, amount: int) -> bool:
             uid = str(user_id)
             now = datetime.now().isoformat()
 
-            cur.execute(f"SELECT balance FROM balances WHERE user_id = {p}", (uid,))
-            row = cur.fetchone()
-            current_balance = int(row[0]) if row else 0
+            cur.execute(
+                f"""
+                UPDATE balances
+                SET balance = balance - {p}, updated_at = {p}
+                WHERE user_id = {p} AND balance >= {p}
+                """,
+                (int(amount), now, uid, int(amount))
+            )
 
-            if current_balance < amount:
-                cur.close()
+            success = cur.rowcount == 1
+            conn.commit()
+            cur.close()
+            conn.close()
+            if success:
+                print(f"?? REMOVE CZP | user={uid} | remove={amount} | saldo={get_balance(user_id)}")
+            return success
+        except Exception as e:
+            if conn:
+                conn.rollback()
                 conn.close()
-                return False
+            print(f"?? Erro ao remover saldo de {user_id}: {e}")
+            return False
 
-            new_balance = current_balance - int(amount)
 
+def set_balance(user_id: int, amount: int) -> bool:
+    init_db()
+    if amount < 0:
+        return False
+
+    with DB_LOCK:
+        conn = None
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+            now = datetime.now().isoformat()
             cur.execute(
                 f"""
                 INSERT INTO balances (user_id, balance, updated_at)
@@ -355,19 +380,156 @@ def remove_balance(user_id: int, amount: int) -> bool:
                     balance = excluded.balance,
                     updated_at = excluded.updated_at
                 """,
-                (uid, new_balance, now)
+                (str(user_id), int(amount), now)
             )
-
             conn.commit()
             cur.close()
             conn.close()
-            print(f"💸 REMOVE CZP | user={uid} | antes={current_balance} | remove={amount} | depois={new_balance}")
             return True
         except Exception as e:
-            print(f"⚠️ Erro ao remover saldo de {user_id}: {e}")
+            if conn:
+                conn.rollback()
+                conn.close()
+            print(f"?? Erro ao definir saldo de {user_id}: {e}")
             return False
 
 
+def add_balance_all(amount: int) -> int:
+    init_db()
+    if amount <= 0:
+        return 0
+
+    with DB_LOCK:
+        conn = None
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+            now = datetime.now().isoformat()
+            cur.execute(f"UPDATE balances SET balance = balance + {p}, updated_at = {p}", (int(amount), now))
+            changed = cur.rowcount
+            conn.commit()
+            cur.close()
+            conn.close()
+            return changed
+        except Exception as e:
+            if conn:
+                conn.rollback()
+                conn.close()
+            print(f"?? Erro ao adicionar saldo para todos: {e}")
+            return 0
+
+
+def remove_balance_all(amount: int) -> int:
+    init_db()
+    if amount <= 0:
+        return 0
+
+    with DB_LOCK:
+        conn = None
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+            now = datetime.now().isoformat()
+            cur.execute(
+                f"""
+                UPDATE balances
+                SET balance = CASE WHEN balance > {p} THEN balance - {p} ELSE 0 END,
+                    updated_at = {p}
+                """,
+                (int(amount), int(amount), now)
+            )
+            changed = cur.rowcount
+            conn.commit()
+            cur.close()
+            conn.close()
+            return changed
+        except Exception as e:
+            if conn:
+                conn.rollback()
+                conn.close()
+            print(f"?? Erro ao remover saldo de todos: {e}")
+            return 0
+
+
+def reset_all_balances() -> int:
+    init_db()
+    with DB_LOCK:
+        conn = None
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            now = datetime.now().isoformat()
+            p = _db_placeholder()
+            cur.execute(f"UPDATE balances SET balance = 0, updated_at = {p}", (now,))
+            changed = cur.rowcount
+            conn.commit()
+            cur.close()
+            conn.close()
+            return changed
+        except Exception as e:
+            if conn:
+                conn.rollback()
+                conn.close()
+            print(f"?? Erro ao resetar saldos: {e}")
+            return 0
+
+
+def claim_starter_balance(user_id: int, amount: int, cooldown_days: int = 365):
+    init_db()
+    if amount <= 0:
+        return False, None, get_balance(user_id)
+
+    with DB_LOCK:
+        conn = None
+        try:
+            conn = _connect_db()
+            cur = conn.cursor()
+            p = _db_placeholder()
+            uid = str(user_id)
+            now = datetime.now()
+            now_text = now.isoformat()
+            cooldown = timedelta(days=cooldown_days)
+
+            cur.execute(f"SELECT claimed_at FROM starter_claims WHERE user_id = {p}", (uid,))
+            row = cur.fetchone()
+            if row:
+                try:
+                    last_claim = datetime.fromisoformat(str(row[0]))
+                except ValueError:
+                    last_claim = now
+
+                elapsed = now - last_claim
+                if elapsed < cooldown:
+                    cur.close()
+                    conn.close()
+                    return False, cooldown - elapsed, get_balance(user_id)
+
+                cur.execute(f"UPDATE starter_claims SET claimed_at = {p} WHERE user_id = {p}", (now_text, uid))
+            else:
+                cur.execute(f"INSERT INTO starter_claims (user_id, claimed_at) VALUES ({p}, {p})", (uid, now_text))
+
+            cur.execute(
+                f"""
+                INSERT INTO balances (user_id, balance, updated_at)
+                VALUES ({p}, {p}, {p})
+                ON CONFLICT(user_id) DO UPDATE SET
+                    balance = balances.balance + excluded.balance,
+                    updated_at = excluded.updated_at
+                """,
+                (uid, int(amount), now_text)
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+            return True, None, get_balance(user_id)
+        except Exception as e:
+            if conn:
+                conn.rollback()
+                conn.close()
+            print(f"?? Erro ao resgatar saldo inicial de {user_id}: {e}")
+            return False, None, get_balance(user_id)
 def load_starter_claims():
     init_db()
     with DB_LOCK:
@@ -662,38 +824,6 @@ def es_package_text(text: str) -> str:
 # =========================
 # FUNÇÕES AUXILIARES
 # =========================
-def get_balance(user_id: int) -> int:
-    data = load_data()
-    if data is None:
-        return 0
-    return int(data.get(str(user_id), 0))
-
-
-def remove_balance(user_id: int, amount: int) -> bool:
-    data = load_data()
-    if data is None:
-        return False
-    uid = str(user_id)
-
-    current_balance = int(data.get(uid, 0))
-    if current_balance < amount:
-        return False
-
-    data[uid] = current_balance - amount
-    save_data(data)
-    return True
-
-
-def add_balance(user_id: int, amount: int) -> bool:
-    data = load_data()
-    if data is None:
-        return False
-    uid = str(user_id)
-    data[uid] = int(data.get(uid, 0)) + amount
-    save_data(data)
-    return True
-
-
 async def send_dm_safe(user: discord.User | discord.Member, embed: discord.Embed):
     try:
         await user.send(embed=embed)
@@ -758,12 +888,6 @@ def build_czp_packages_embed():
             "**━━━━━━━━━━━━━━━━━━━━━━━━━━**"
         ),
         color=0xFFD700
-    )
-
-    embed.add_field(
-        name="🎁 Benefício Gratuito",
-        value="`Gratuito` ➔ **Saldo Inicial**\n💰 **+1500 CZP**\n⏱️ *Disponível 1 vez a cada 365 dias.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
-        inline=False
     )
 
     paid_value = (
@@ -1103,11 +1227,6 @@ class CZPPackageSelect(ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(
-                label="Grátis - Saldo Inicial",
-                description="1500 CZP • disponível a cada 365 dias",
-                value="starter"
-            ),
-            discord.SelectOption(
                 label="R$ 10,00 • 500 CZP",
                 description="Starter Pack",
                 value="p1"
@@ -1171,11 +1290,19 @@ class CZPPackageSelect(ui.Select):
                     )
                     return
 
-            add_balance(interaction.user.id, package["czp"])
-            claims[uid] = now.isoformat()
-            save_starter_claims(claims)
-
-            new_balance = get_balance(interaction.user.id)
+            claimed, remaining, new_balance = claim_starter_balance(interaction.user.id, package["czp"])
+            if not claimed:
+                if remaining:
+                    days = remaining.days
+                    hours = remaining.seconds // 3600
+                    await interaction.response.send_message(
+                        f"Voce ja resgatou seu saldo inicial.\n"
+                        f"Tente novamente em **{days} dias e {hours} horas**.",
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.response.send_message("Nao consegui liberar o saldo inicial agora.", ephemeral=True)
+                return
 
             free_embed = discord.Embed(
                 title="🎁 Recibo de Resgate CZP",
@@ -1394,12 +1521,6 @@ def build_czp_packages_embed_es():
         color=0xFFD700
     )
 
-    embed.add_field(
-        name="🎁 Beneficio Gratuito",
-        value="`Gratis` ➔ **Saldo Inicial**\n💰 **+1500 CZP**\n⏱️ *Disponible 1 vez cada 365 días.*\n\n**━━━━━━━━━━━━━━━━━━━━━━━━━━**",
-        inline=False
-    )
-
     paid_value = (
         "💵 **R$ 10,00** ➔ `500 CZP` │ *Paquete Inicial*\n"
         "💵 **R$ 20,00** ➔ `1100 CZP` │ *Paquete Sobreviviente*\n"
@@ -1613,7 +1734,6 @@ class BuySelectViewES(ui.View):
 class CZPPackageSelectES(ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label="Gratis - Saldo Inicial", description="1500 CZP • disponible cada 365 días", value="starter"),
             discord.SelectOption(label="R$ 10,00 • 500 CZP", description="Paquete Inicial", value="p1"),
             discord.SelectOption(label="R$ 20,00 • 1100 CZP", description="Paquete Sobreviviente", value="p2"),
             discord.SelectOption(label="R$ 50,00 • 3000 CZP", description="Paquete Raider", value="p3"),
@@ -1647,10 +1767,19 @@ class CZPPackageSelectES(ui.Select):
                     )
                     return
 
-            add_balance(interaction.user.id, package["czp"])
-            claims[uid] = now.isoformat()
-            save_starter_claims(claims)
-            new_balance = get_balance(interaction.user.id)
+            claimed, remaining, new_balance = claim_starter_balance(interaction.user.id, package["czp"])
+            if not claimed:
+                if remaining:
+                    days = remaining.days
+                    hours = remaining.seconds // 3600
+                    await interaction.response.send_message(
+                        f"Ya canjeaste tu saldo inicial.\n"
+                        f"Intentalo de nuevo en **{days} dias y {hours} horas**.",
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.response.send_message("No pude liberar el saldo inicial ahora.", ephemeral=True)
+                return
 
             free_embed = discord.Embed(
                 title="🎁 Recibo de Canje CZP",
@@ -1873,37 +2002,29 @@ async def setup_shop(ctx):
 @commands.has_permissions(administrator=True)
 async def addcoins(ctx, member: discord.Member, amount: int):
     if amount <= 0:
-        await ctx.send("❌ O valor precisa ser maior que 0.")
+        await ctx.send("O valor precisa ser maior que 0.")
         return
 
-    data = load_data()
-    if data is None:
-        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+    if not add_balance(member.id, amount):
+        await ctx.send("Erro ao acessar o banco de saldos. Comando cancelado.")
         return
-        
-    uid = str(member.id)
-    data[uid] = int(data.get(uid, 0)) + amount
-    save_data(data)
 
-    await ctx.send(f"✅ {amount} CZP adicionados para {member.mention}. Saldo atual: **{data[uid]} CZP**")
+    new_balance = get_balance(member.id)
+    await ctx.send(f"{amount} CZP adicionados para {member.mention}. Saldo atual: **{new_balance} CZP**")
 
 
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setcoins(ctx, member: discord.Member, amount: int):
     if amount < 0:
-        await ctx.send("❌ O valor não pode ser negativo.")
+        await ctx.send("O valor nao pode ser negativo.")
         return
 
-    data = load_data()
-    if data is None:
-        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+    if not set_balance(member.id, amount):
+        await ctx.send("Erro ao acessar o banco de saldos. Comando cancelado.")
         return
-        
-    data[str(member.id)] = amount
-    save_data(data)
 
-    await ctx.send(f"✅ Saldo de {member.mention} definido para **{amount} CZP**")
+    await ctx.send(f"Saldo de {member.mention} definido para **{amount} CZP**")
 
 
 @bot.command()
@@ -1911,103 +2032,72 @@ async def setcoins(ctx, member: discord.Member, amount: int):
 async def saldo(ctx, member: discord.Member = None):
     member = member or ctx.author
     balance = get_balance(member.id)
-    await ctx.send(f"💰 Saldo de {member.mention}: **{balance} CZP**")
+    await ctx.send(f"Saldo de {member.mention}: **{balance} CZP**")
 
 
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def addall(ctx, amount: int):
     if amount <= 0:
-        await ctx.send("❌ O valor precisa ser maior que 0.")
+        await ctx.send("O valor precisa ser maior que 0.")
         return
 
-    data = load_data()
-    if data is None:
-        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+    changed = add_balance_all(amount)
+    if changed <= 0:
+        await ctx.send("Nenhum usuario encontrado no banco de dados.")
         return
 
-    if not data:
-        await ctx.send("⚠️ Nenhum usuário encontrado no banco de dados.")
-        return
-
-    for user_id in data:
-        data[user_id] = int(data.get(user_id, 0)) + amount
-
-    save_data(data)
-    await ctx.send(f"✅ {amount} CZP adicionados para TODOS os usuários cadastrados.")
+    await ctx.send(f"{amount} CZP adicionados para TODOS os usuarios cadastrados.")
 
 
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def removeall(ctx, amount: int):
     if amount <= 0:
-        await ctx.send("❌ O valor precisa ser maior que 0.")
+        await ctx.send("O valor precisa ser maior que 0.")
         return
 
-    data = load_data()
-    if data is None:
-        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+    changed = remove_balance_all(amount)
+    if changed <= 0:
+        await ctx.send("Nenhum usuario encontrado no banco de dados.")
         return
 
-    if not data:
-        await ctx.send("⚠️ Nenhum usuário encontrado no banco de dados.")
-        return
-
-    for user_id in data:
-        current_balance = int(data.get(user_id, 0))
-        data[user_id] = max(0, current_balance - amount)
-
-    save_data(data)
-    await ctx.send(f"💸 {amount} CZP removidos de TODOS os usuários cadastrados.")
+    await ctx.send(f"{amount} CZP removidos de TODOS os usuarios cadastrados.")
 
 
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def resetall(ctx):
-    data = load_data()
-    if data is None:
-        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
+    changed = reset_all_balances()
+    if changed <= 0:
+        await ctx.send("Nenhum usuario para resetar.")
         return
 
-    if not data:
-        await ctx.send("⚠️ Nenhum usuário para resetar.")
-        return
-
-    for user_id in data:
-        data[user_id] = 0
-
-    save_data(data)
-    await ctx.send("♻️ Todos os saldos foram resetados para 0.")
+    await ctx.send("Todos os saldos foram resetados para 0.")
 
 
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def removecoins(ctx, member: discord.Member, amount: int):
     if amount <= 0:
-        await ctx.send("❌ O valor precisa ser maior que 0.")
+        await ctx.send("O valor precisa ser maior que 0.")
         return
 
-    data = load_data()
-    if data is None:
-        await ctx.send("❌ Erro ao acessar o arquivo de saldos. Comando cancelado.")
-        return
-        
-    uid = str(member.id)
-    current_balance = int(data.get(uid, 0))
-
+    current_balance = get_balance(member.id)
     if current_balance <= 0:
-        await ctx.send(f"⚠️ {member.mention} não tem CZP para remover.")
+        await ctx.send(f"{member.mention} nao tem CZP para remover.")
         return
 
     removed_amount = min(amount, current_balance)
-    data[uid] = current_balance - removed_amount
-    save_data(data)
+    if not remove_balance(member.id, removed_amount):
+        await ctx.send("Erro ao acessar o banco de saldos. Comando cancelado.")
+        return
 
+    new_balance = get_balance(member.id)
     await ctx.send(
-        f"💸 {removed_amount} CZP removidos de {member.mention}. "
-        f"Saldo atual: **{data[uid]} CZP**"
+        f"{removed_amount} CZP removidos de {member.mention}. "
+        f"Saldo atual: **{new_balance} CZP**"
     )
-
 
 @bot.command()
 @commands.has_permissions(administrator=True)
